@@ -1,0 +1,30 @@
+{"prompt": "What is a GPU?", "max_new_tokens": 40}
+{"prompt": "Define DVFS in one sentence.", "max_new_tokens": 32}
+{"prompt": "What does SLO stand for in cloud services?", "max_new_tokens": 36}
+{"prompt": "Name two NVIDIA tools for monitoring GPU power.", "max_new_tokens": 48}
+{"prompt": "What is the unit of energy used for measuring GPU consumption?", "max_new_tokens": 32}
+{"prompt": "In one sentence, what is LLM inference?", "max_new_tokens": 48}
+{"prompt": "What is a P95 latency?", "max_new_tokens": 56}
+{"prompt": "What is telemetry in a data center?", "max_new_tokens": 60}
+{"prompt": "Give a one-line definition of batch size in model serving.", "max_new_tokens": 64}
+{"prompt": "What does NVML stand for?", "max_new_tokens": 40}
+{"prompt": "Explain how GPU clock frequency affects inference latency.", "max_new_tokens": 96}
+{"prompt": "Describe the trade-off between energy use and response time in LLM serving.", "max_new_tokens": 128}
+{"prompt": "What is an error budget, and how do SRE teams use it?", "max_new_tokens": 112}
+{"prompt": "Explain why stale sensor readings can mislead a feedback controller.", "max_new_tokens": 120}
+{"prompt": "Summarize how autoscaling works in a cloud inference service.", "max_new_tokens": 100}
+{"prompt": "What causes bursty traffic in online AI services?", "max_new_tokens": 80}
+{"prompt": "Explain the difference between throughput and latency for a GPU server.", "max_new_tokens": 90}
+{"prompt": "How does a Poisson arrival process model user requests?", "max_new_tokens": 110}
+{"prompt": "Why do datacenters care about joules per token?", "max_new_tokens": 72}
+{"prompt": "Describe what happens on a GPU during a single forward pass of a transformer.", "max_new_tokens": 128}
+{"prompt": "Write a short technical overview of dynamic voltage and frequency scaling for GPUs, including its benefits and risks.", "max_new_tokens": 200}
+{"prompt": "Explain how a cloud provider might design an energy-aware scheduler for LLM inference across many GPUs.", "max_new_tokens": 256}
+{"prompt": "Describe the main sources of latency in an end-to-end LLM inference request, from network arrival to response.", "max_new_tokens": 220}
+{"prompt": "Compare static frequency locking with adaptive frequency control for GPU workloads, with pros and cons of each.", "max_new_tokens": 180}
+{"prompt": "Explain how telemetry delay can be measured and mitigated in a GPU monitoring pipeline.", "max_new_tokens": 160}
+{"prompt": "Write a brief guide for operators on setting latency SLOs for a chatbot backed by a large language model.", "max_new_tokens": 240}
+{"prompt": "Discuss how batching requests improves GPU efficiency and when it hurts tail latency.", "max_new_tokens": 200}
+{"prompt": "Explain the role of KV caching in transformer inference and how it affects memory and speed.", "max_new_tokens": 150}
+{"prompt": "Describe a feedback control loop for GPU power management and how hysteresis prevents oscillation.", "max_new_tokens": 192}
+{"prompt": "Outline the key metrics a team should report when evaluating an energy-saving inference system.", "max_new_tokens": 256}
