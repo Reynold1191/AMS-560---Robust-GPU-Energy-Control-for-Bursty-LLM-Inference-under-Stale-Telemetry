@@ -54,6 +54,6 @@ def test_slo_budget_summary_maps_onto_state():
         assert src in s and dst in state_fields
 
 
-def test_state_slo_default_differs_from_config(cfg):
-    """ControllerState defaults to 2.0 s; callers must pass cfg.slo_target_s explicitly."""
-    assert ControllerState().slo_target_s != cfg.slo_target_s
+def test_state_slo_default_matches_config(cfg):
+    """State metadata and the experiment use the same default target."""
+    assert ControllerState().slo_target_s == cfg.slo_target_s

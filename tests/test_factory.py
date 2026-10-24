@@ -87,3 +87,22 @@ def test_oracle_without_table_still_builds(clocks, cfg):
 @pytest.mark.parametrize("name", CONTROLLER_NAMES)
 def test_every_config_name_builds(clocks, cfg, name):
     assert get_controller(name, clocks, cfg).name
+
+
+@needs_robust
+@pytest.mark.parametrize("workload", ["steady", "ramp", "sharp_burst"])
+@pytest.mark.parametrize("name", ["robust", "robust_no_age", "robust_no_budget", "oracle"])
+def test_factory_forwards_workload(clocks, workload, name):
+    cfg = ExperimentConfig(workload=workload)
+    assert get_controller(name, clocks, cfg).workload == workload
+
+
+@needs_robust
+def test_oracle_receives_table_path(clocks, tmp_path):
+    table = tmp_path / "oracle.csv"
+    table.write_text("workload_bucket,min_clock_mhz\nsharp_burst,1635\n", encoding="utf-8")
+    cfg = ExperimentConfig(workload="sharp_burst", oracle_table_path=str(table))
+    controller = get_controller("oracle", clocks, cfg)
+    assert controller.workload == cfg.workload
+    assert controller.oracle_table is not None
+    assert controller.oracle_table.iloc[0]["min_clock_mhz"] == 1635

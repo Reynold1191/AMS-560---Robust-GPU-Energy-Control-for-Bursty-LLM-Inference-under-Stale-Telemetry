@@ -16,11 +16,33 @@ experiment (attempt_3) and produces 8 analysis figures.
 
 | Member | Role | Files | Machine |
 |--------|------|-------|---------|
-| 1 | Data Layer | `config.py`, `request_queue.py`, `delay_buffer.py`, `slo_budget.py`, `prompts/prompts.jsonl` | Mac |
-| 2 | Controller Logic | `controllers/` (all 5 files) | Mac |
+| 1 | Data Layer, Static Baselines & Factory | `config.py`, `request_queue.py`, `delay_buffer.py`, `slo_budget.py`, `prompts/prompts.jsonl`, `controllers/static.py`, `controllers/__init__.py`, synthetic scenarios and config checks | Mac |
+| 2 | Controller Interfaces & Dynamic Policies | `controllers/base.py`, `controllers/naive_slo.py`, `controllers/robust_delay_budget.py` | Mac |
 | 3 | Metrics & Analysis | `metrics.py`, `analyze_results.py`, `oracle_builder.py` | Mac |
 | 4 | Load Generation & Scale Sim | `load_generator.py`, `scale_simulator.py` | Mac |
 | 5 | GPU + LLM + Orchestration | `gpu_clock.py`, `telemetry.py`, `measure_timing.py`, `llm_worker.py`, `run_experiment.py`, `run_demo.py`, `run_all.ps1`, `setup.ps1` | **RTX + Windows only** |
+
+**Agreed controller ownership:** Member 1 takes static baselines, factory wiring,
+the synthetic `ControllerState` test harness, and controller/config compatibility
+checks. Member 2 keeps `base.py` (state interface, bounds, and dwell enforcement),
+the naive policy, robust risk policy, ablations, and oracle behavior. This moves
+2 of the original 5 controller files and shared scenario/testing work to Member 1.
+
+**Current implementation:** `member2-controller-logic` includes Member 1's data
+layer (`6acc251`) and static/factory/test harness branch (`41a20d2`), retaining
+Member 2's `base.py` and dynamic policies. The factory forwards `config.workload`
+to every robust variant, including oracle. Configured SLO targets govern policy
+decisions; state metadata defaults to the same 8.5 s target. GPU orchestration
+remains Member 5's work.
+
+| Test file | Owner | Coverage |
+|-----------|-------|----------|
+| `tests/conftest.py`, `tests/test_dynamic_controllers.py` | 1 | Shared synthetic state scenarios and policy integration checks |
+| `tests/test_static.py`, `tests/test_factory.py`, `tests/test_config_compat.py` | 1 | Static baselines, factory forwarding, config compatibility |
+| `tests/test_controller_interfaces.py` | 2 | State, static/factory integration, clock bounds, dwell |
+| `tests/test_data_layer_integration.py` | 1 | Imported config, queue, delay, SLO budget, prompts, controller inputs |
+| `tests/test_policy_acceptance.py` | 2 | Naive/robust decisions, configured SLO, risk, ablations, burst/recovery |
+| `tests/test_oracle_controller.py` | 2 | CSV schemas, minimum-clock selection, robust fallback |
 
 ## Environment Setup
 
@@ -29,6 +51,15 @@ experiment (attempt_3) and produces 8 analysis figures.
 conda create -n ams560 python=3.10 && conda activate ams560
 pip install pandas matplotlib numpy scipy pytest
 ```
+
+For only the implemented data/controller layer, a local environment is enough:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+python -m pytest tests/ -q
+```
+These tests require no NVIDIA GPU, CUDA, PyTorch, or downloaded model.
 
 **Windows RTX (Member 5):**
 ```powershell
@@ -42,24 +73,38 @@ python -c "import torch; print(torch.cuda.is_available())"  # must print True
 ## Merge Order
 
 **Step 1:** Member 1 pushes (everyone depends on `config.py`)
-**Step 2:** Members 2, 3, 4 work in parallel (all depend on Member 1)
+**Step 2:** Member 1 supplies static controllers, factory, and shared scenarios;
+Member 2 supplies `base.py` and dynamic policies. Members 3 and 4 build metrics
+and load generation against the data layer. The Member 2 branch combines the
+controller implementations and tests for review.
 **Step 3:** Member 5 pulls all branches, integrates, runs 24 conditions
 
 ---
 
 ---
 
-# Member 1 — Data Layer
+# Member 1 — Data Layer, Static Baselines & Factory
 
 **Machine:** Mac  
-**Complexity:** Low  
-**Files:** `config.py`, `request_queue.py`, `delay_buffer.py`, `slo_budget.py`, `prompts/prompts.jsonl`
+**Complexity:** Medium
+
+**Files:** `config.py`, `request_queue.py`, `delay_buffer.py`, `slo_budget.py`,
+`prompts/prompts.jsonl`, `controllers/static.py`, `controllers/__init__.py`,
+`tests/conftest.py`, `tests/test_static.py`, `tests/test_factory.py`,
+`tests/test_config_compat.py`, `tests/test_dynamic_controllers.py`,
+`tests/test_data_layer_integration.py`
 
 ## What you are building
 
 You define the shared data types and parameters that every other module imports.
 No GPU needed. No third-party libraries beyond Python stdlib.
 Push `config.py` as soon as it is working — the entire team is blocked on it.
+
+**Additional ownership moved from Member 2:** maintain `StaticController`,
+`get_controller()`, synthetic state scenarios, and controller/config compatibility
+tests. Member 2 owns `ControllerState` and `BaseController` in `base.py`.
+Specifications are kept together below so the controller contract is easy to
+find. Coordinate interface changes with Members 2 and 5.
 
 ---
 
@@ -398,12 +443,14 @@ print('PASS: 30 valid prompts')
 
 ---
 
-# Member 2 — Controller Logic
+# Member 2 — Controller Interfaces & Dynamic Policies
 
 **Machine:** Mac  
-**Complexity:** High  
-**Files:** `controllers/__init__.py`, `controllers/base.py`, `controllers/static.py`,
-`controllers/naive_slo.py`, `controllers/robust_delay_budget.py`
+**Complexity:** Medium–High (reduced scope)
+
+**Files:** `controllers/base.py`, `controllers/naive_slo.py`,
+`controllers/robust_delay_budget.py`, `tests/test_controller_interfaces.py`,
+`tests/test_policy_acceptance.py`, `tests/test_oracle_controller.py`
 
 ## What you are building
 
@@ -415,19 +462,26 @@ Lower clock = slower but saves energy.
 The controller sees a snapshot of system state (latencies, queue length, how old the GPU readings are)
 and returns a clock index from a list like `[180, 667, 1147, 1635, 2122, 2602, 3090]` MHz.
 
-You implement 4 controllers:
-- `StaticController` — always the same clock (used as energy/latency baseline)
+The combined controller package provides:
+- `StaticController` — always the same clock (Member 1)
 - `NaiveSLOController` — reacts to latency and queue, ignores telemetry age (weak baseline)
 - `RobustDelayBudgetController` — also accounts for telemetry age and error budget (proposed method)
-- Factory `get_controller()` — creates the right one by name
+- Factory `get_controller()` — creates the right one by name (Member 1)
+
+Member 2 owns the base/state interface and the two dynamic policies, including
+oracle behavior and ablations. Static/factory specifications belong to Member 1
+as labeled.
 
 ## Dependencies
 
-`config.py` from Member 1. No GPU.
+`config.py`, static controllers, factory wiring, and shared scenarios from Member 1.
+No GPU.
 
 ---
 
 ### `controllers/base.py`
+
+**Owner: Member 2.**
 
 **Purpose:** Defines the shared input type (`ControllerState`) and the abstract
 base class all controllers inherit from.
@@ -445,7 +499,8 @@ base class all controllers inherit from.
 - `arrival_cv: float` — coefficient of variation of inter-arrival times (burstiness, default 0.0)
 - `p95_latency_s: float` — 95th percentile latency from `SLOBudget` (default 0.0)
 - `p99_latency_s: float` — 99th percentile latency (default 0.0)
-- `slo_target_s: float` — the SLO threshold in seconds (default 2.0)
+- `slo_target_s: float` — target metadata for logging and slack (default 8.5);
+  the controller's configured target is authoritative for policy decisions
 - `error_budget_burn: float` — burn rate from `SLOBudget.burn_rate()` (default 0.0)
 - `miss_rate: float` — fraction of recent requests that missed SLO (default 0.0)
 - `phase: str` — experiment phase, e.g. "steady", "burst" (default "steady")
@@ -457,6 +512,7 @@ A value of 1.0 means no latency at all; 0.0 means exactly at target; negative me
 
 - `__init__(self, clocks: List[int])`:
   - Raise `ValueError` if `clocks` is empty
+  - Require positive, strictly increasing clock frequencies; copy the list
   - Store `self.clocks`, initialize `self._intervals_since_change = 0`,
     `self._last_change_t = time.monotonic()`, `self.last_reason = "INIT"`
   - `last_reason` is a string written by `_policy()` explaining why the last decision was made
@@ -464,13 +520,16 @@ A value of 1.0 means no latency at all; 0.0 means exactly at target; negative me
 - `_policy(self, state, current_idx) -> int` — abstract; subclasses implement this.
   Returns the desired clock *index* (not MHz).
 
-- `decide(self, state, current_idx, min_dwell=0) -> int` — concrete; enforces the dwell constraint:
+- `decide(self, state, current_idx, min_dwell=None) -> int` — concrete; uses the
+  controller's configured dwell when omitted; explicit `0` disables dwell:
   1. Call `_policy()` to get `desired_idx`; clamp it to `[0, len(clocks)-1]`
   2. If `desired_idx > current_idx` (emergency up-clock): reset `_intervals_since_change = 0`, return immediately
   3. Increment `_intervals_since_change`
   4. If `desired_idx == current_idx`: return current
   5. If `desired_idx < current_idx` AND `_intervals_since_change >= min_dwell`: reset counter, return `desired_idx`
   6. Otherwise: hold, return `current_idx`
+  - Update `_last_change_t` on actual changes; append `DWELL_HOLD` to the reason
+    when dwell blocks a reduction. All upward policy decisions bypass dwell.
 
 - `clock_mhz(self, idx)` — return `self.clocks[clamped_idx]`
 
@@ -481,6 +540,8 @@ A value of 1.0 means no latency at all; 0.0 means exactly at target; negative me
 ---
 
 ### `controllers/static.py`
+
+**Owner: Member 1 (reassigned from Member 2).**
 
 **Purpose:** Always returns one fixed clock index. Used as the "static" baselines
 (`static_high` = max clock, `static_efficient` = most energy-efficient clock from sweep).
@@ -496,33 +557,41 @@ A value of 1.0 means no latency at all; 0.0 means exactly at target; negative me
   - Return `self._target_idx`
 
 - Property `name` — return `f"Static({self.clocks[self._target_idx]} MHz)"`
+- Property `target_mhz` — return the selected static frequency in MHz
 
 ---
 
 ### `controllers/naive_slo.py`
 
-**Purpose:** The "naive" baseline. Watches P95 latency and queue length, but does NOT
-look at how old the telemetry is. This is its fatal flaw: under stale telemetry, the
-controller keeps down-clocking during the delay window after a burst starts, because
-the delayed readings still show low load.
+**Owner: Member 2.**
+
+**Purpose:** The "naive" baseline. Watches P95 latency and queue length, but ignores
+telemetry age and error-budget burn. It may reduce frequency while latency and
+queue signals still look safe during a burst transition. The controller alone
+does not establish a stale-telemetry failure; compare measured experiment traces.
 
 **Implement class `NaiveSLOController(BaseController)`:**
 
-- `__init__(self, clocks, slo_target_s=2.0, down_slack=0.80, min_dwell=2)`
+- `__init__(self, clocks, slo_target_s=8.5, down_slack=0.80, min_dwell=2)`
 
 - `_policy(self, state, current_idx)` — implement exactly this three-way logic:
-  1. **Emergency** — if `state.p95_latency_s > slo_target_s` (use `state.slo_target_s` if available, else `self.slo_target_s`):
+  1. **Emergency** — if `state.p95_latency_s > self.slo_target_s`:
      - Set `last_reason = "EMERGENCY_SLO"` and return `min(current_idx + 1, max_idx)`
   2. **Safe down-clock** — if `state.p95_latency_s < down_slack × slo_target` AND `state.queue_len == 0`:
      - Set `last_reason = "SAFE_DOWNCLOCK"` and return `max(current_idx - 1, 0)`
   3. **Hold** — otherwise:
      - Set `last_reason = "HOLD"` and return `current_idx`
 
+Use the configured `self.slo_target_s` in every latency comparison. Snapshot
+metadata must not silently override the experiment's target.
+
 - Property `name` — return `"NaiveSLO"`
 
 ---
 
 ### `controllers/robust_delay_budget.py`
+
+**Owner: Member 2.**
 
 **Purpose:** The proposed robust controller. The key insight is that **stale telemetry
 should increase the system's caution level**. Even if the delayed readings show low load,
@@ -554,11 +623,15 @@ Note `w_age = 0.35` is the largest weight — stale telemetry = the strongest ri
   - Risk weights: `w_q=0.30, w_age=0.35, w_burn=0.20, w_cv=0.15`
   - Thresholds: `high_risk_thresh=0.55, low_risk_thresh=0.40`
   - Other tunable constants: `age_threshold_s=1.0, max_queue_norm=10, emergency_burn=2.0, down_slack_frac=0.80`
+  - `stale_downclock_ms=300.0` — block reductions on older observations when the
+    age feature is enabled; `workload=None` — optional oracle workload bucket
   - If `oracle_table_path` is provided, load it as a DataFrame via `pandas.read_csv`
+    (lazy import); on load errors, log a warning and use the robust policy
 
 - `_risk(self, state)` — compute and return the risk score [0, 1] using the formula above
 
-- `_policy(self, state, current_idx)` — four-branch logic:
+- `_policy(self, state, current_idx)` — ordered policy logic, using the configured
+  `self.slo_target_s` for latency comparisons:
   1. **Oracle mode** — if `oracle_mode=True` and oracle table loaded, call `_oracle_lookup()`
   2. **Emergency** — if `p95 > slo_target` OR (use_error_budget AND burn > emergency_burn):
      - Set `last_reason = "EMERGENCY_SLO"` or `"EMERGENCY_BUDGET"` accordingly
@@ -567,21 +640,37 @@ Note `w_age = 0.35` is the largest weight — stale telemetry = the strongest ri
      - Set `last_reason = f"HIGH_RISK(r={risk:.2f})"` (append `" STALE_OBSERVATION"` if age > 300 ms)
      - Return `min(current_idx + 1, max_idx)`
   4. **Safe down-clock** — if `_risk(state) < low_risk_thresh` AND `p95 < down_slack_frac × slo_target`:
+     - If `use_telemetry_age` AND age > `stale_downclock_ms`: hold with
+       `HOLD(r=...) STALE_OBSERVATION`
      - Set `last_reason = f"SAFE_DOWNCLOCK(r={risk:.2f})"`
      - Return `max(current_idx - 1, 0)`
   5. **Hold** — otherwise:
      - Set `last_reason = f"HOLD(r={risk:.2f})"`
      - Return `current_idx`
 
-- `_oracle_lookup(self, state, current_idx)` — try to find a row in the oracle table
-  matching `state.phase`, read `min_clock_mhz`, return `self.find_index(that_mhz)`.
-  Fall back to `_policy_robust()` on any error.
+- `_oracle_lookup(self, state, current_idx)` — match `phase` against `state.phase`
+  for phase tables. For Member 3's `workload_bucket` schema (also accept `workload`),
+  match the configured workload, falling back to `state.phase` if none was passed.
+  Read `min_clock_mhz` and choose the lowest supported clock at or above that
+  minimum. Fall back to `_policy_robust()` on missing rows, malformed values,
+  missing columns, or an unsupported minimum. Keep fallback separate from
+  `_policy()` to avoid recursive oracle retries.
 
-- Property `name` — return `"Robust"` (or `"Robust_NoAge"` / `"Robust_NoBudget"` based on ablation flags)
+- Expose `last_risk` for control-event logging.
+- Property `name` — `"Oracle"` in oracle mode, otherwise `"Robust"`,
+  `"Robust_NoAge"`, `"Robust_NoBudget"`, or `"Robust_NoAge_NoBudget"`.
+
+**Resolution of the original formula/test conflict:** At 600 ms with otherwise
+idle state, the specified risk is `0.35 × 0.6 = 0.21`, below the `0.40` reduction
+threshold. Changing `w_age` to `0.40` still gives only `0.24`. Preserve the risk
+formula and add the explicit stale-observation guard above to satisfy acceptance
+Test 4. The no-age ablation disables both the age risk term and this guard.
 
 ---
 
 ### `controllers/__init__.py`
+
+**Owner: Member 1 (reassigned from Member 2).**
 
 **Purpose:** A factory so any script can call `get_controller("robust", clocks, cfg)`
 without knowing which class to import.
@@ -1346,6 +1435,6 @@ python run_demo.py --quick-test  # add a --quick-test flag that only runs 2 cond
 | `ModuleNotFoundError: torch` | `pip3 install torch --index-url https://download.pytorch.org/whl/cu126` |
 | `nvidia-smi not found` | Open terminal as Administrator; check PATH |
 | `miss_rate = 0% everywhere` | SLO is too loose; try `slo_target_s = 7.0` |
-| Controller test T2 failed | Increase `w_age` from 0.35 to 0.40 in `RobustDelayBudgetController` |
+| Stale-telemetry acceptance test failed | Check the explicit >300 ms reduction guard and `use_telemetry_age`; increasing `w_age` to 0.40 alone cannot satisfy the 600 ms case |
 | Clock lock fails silently | Must run as Administrator on Windows |
 | All test cases pass but fig7 is missing | Check `burst_multiplier` is in `run_summary.csv` |

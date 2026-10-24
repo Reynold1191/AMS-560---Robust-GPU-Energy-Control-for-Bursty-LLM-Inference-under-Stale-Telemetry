@@ -1,0 +1,3 @@
+# Mac controller development and oracle CSV support; no GPU dependencies.
+pytest
+pandas

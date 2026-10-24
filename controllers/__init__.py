@@ -21,7 +21,8 @@ def _static_target(name: str, clocks: List[int], config) -> int:
 
 
 def _robust_kwargs(name: str, config) -> dict:
-    kw = dict(slo_target_s=config.slo_target_s, min_dwell=config.min_dwell_intervals)
+    kw = dict(slo_target_s=config.slo_target_s, min_dwell=config.min_dwell_intervals,
+              workload=config.workload)
     if name == "robust":
         kw.update(use_telemetry_age=config.use_telemetry_age,
                   use_error_budget=config.use_error_budget, oracle_mode=False)
@@ -36,7 +37,7 @@ def _robust_kwargs(name: str, config) -> dict:
 
 def get_controller(name: str, clocks: List[int], config) -> BaseController:
     if not clocks:
-        raise ValueError("clocks is empty; populate config.selected_clocks first")
+        raise ValueError("clocks must contain at least one frequency; populate config.selected_clocks first")
     clocks = sorted(clocks)
 
     if name in STATIC_NAMES:

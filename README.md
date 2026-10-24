@@ -5,6 +5,57 @@ AMS 560 * Big Data Systems, Algorithms and Networks * Stony Brook University
 
 ---
 
+## Implementation Status and Mac Development
+
+The data layer from `origin/member1-data-layer` and static/factory/test harness
+from `origin/controllers-static-factory` are integrated with Member 2's base and
+dynamic policies on `member2-controller-logic`. The GPU runner, load generation,
+metrics, and analysis scripts described below are planned team deliverables.
+See [TEAM_PLAN.md](TEAM_PLAN.md) for the current ownership and integration order.
+
+Member 1 owns the data layer, `controllers/static.py`, `controllers/__init__.py`,
+shared synthetic scenarios, and controller/config compatibility tests. Member 2
+owns `controllers/base.py`, `controllers/naive_slo.py`,
+`controllers/robust_delay_budget.py`, and policy/oracle acceptance tests.
+
+Run the implemented tests on Mac without a GPU:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-dev.txt
+python -m pytest tests/ -q
+```
+
+To make a controller decision:
+
+```python
+from config import ExperimentConfig
+from controllers import ControllerState, get_controller
+
+cfg = ExperimentConfig()
+clocks = [180, 667, 1147, 1635, 2122, 2602, 3090]
+controller = get_controller("robust", clocks, cfg)
+state = ControllerState(
+    slo_target_s=cfg.slo_target_s,
+    p95_latency_s=2.0,
+    telemetry_age_ms=600.0,
+)
+idx = controller.decide(state, current_idx=3)
+print(controller.clock_mhz(idx), controller.last_reason)  # Holds at 1635 MHz
+```
+
+Supply increasing, positive clock values and the experiment's SLO in each state.
+The configured controller target governs policy decisions; state SLO metadata
+supports logging and `latency_slack`. Both default to 8.5 seconds. Pass custom
+targets from `cfg` when building state so slack and logging use the same target.
+`decide()` uses the controller's configured dwell unless explicitly overridden;
+all increases bypass dwell. Controllers select indices; Member 5's runner will
+apply the corresponding MHz to the GPU. For `default`, the runner must skip
+clock locking so the NVIDIA driver controls frequency.
+
+---
+
 ## Research Question
 
 > Can a delay-aware GPU frequency controller reduce LLM inference energy
@@ -164,8 +215,11 @@ python analyze_results.py
 | default | No clock locking -- NVIDIA driver manages frequency |
 | static_high | Locked to highest supported clock |
 | static_low | Locked to lowest feasible clock |
+| static_efficient | Locked to the supported clock nearest the sweep's efficient clock (default 667 MHz) |
 | naive_slo | Adapts to P95 latency + queue from delayed telemetry; ignores age/budget |
 | robust | Uses telemetry age AND error-budget burn rate as explicit risk signals |
+| robust_no_age | Robust policy with the age risk term and stale-observation guard disabled |
+| robust_no_budget | Robust policy with budget risk and budget emergency disabled |
 | oracle | Fresh-telemetry upper bound using pre-measured frequency lookup table |
 
 ### Robust Controller Risk Score
@@ -175,15 +229,28 @@ risk = 0.30 * q_norm + 0.35 * age_norm + 0.20 * burn_norm + 0.15 * cv_norm
 
 q_norm    = min(queue_len / 10, 1)
 age_norm  = min(telemetry_age_ms / 1000, 1)   <- KEY: staleness signal (largest weight)
-burn_norm = min(error_budget_burn / 3, 1)      <- KEY: long-horizon reliability
-cv_norm   = min(arrival_cv / 2, 1)
+burn_norm = min(error_budget_burn, 1)          <- KEY: long-horizon reliability
+cv_norm   = min(arrival_cv, 1)
 ```
 
 Priority rules:
 1. Emergency  (P95 > SLO OR burn > 2.0) -> up-clock by +2 (bypasses dwell)
-2. High risk  (risk > 0.65)             -> up-clock by +1
-3. Safe       (risk < 0.30 AND P95 < 0.70 * SLO) -> down-clock by -1
+2. High risk  (risk > 0.55)             -> up-clock by +1
+3. Safe       (risk < 0.40 AND P95 < 0.80 * SLO) -> down-clock by -1,
+              provided age <= 300 ms or use_telemetry_age is disabled
 4. Hold       otherwise
+
+Risk inputs are clamped to [0, 1]. Budget emergencies apply only when the budget
+feature is enabled. The explicit stale-observation guard preserves the specified
+risk weights while preventing reductions in the 600 ms acceptance case; see the
+formula/test resolution in the team plan. `last_risk` and `last_reason` expose
+the decision signals for logging.
+
+The oracle loads CSVs with `phase,min_clock_mhz` or Member 3's
+`workload_bucket,min_clock_mhz` schema. The factory passes `config.workload` for
+workload tables. It rounds minimum frequencies up to supported clocks and falls
+back to the robust policy if a table cannot be used. Fresh telemetry must be
+supplied by the experiment runner for the intended oracle comparison.
 
 ---
 
