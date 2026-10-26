@@ -56,6 +56,25 @@ def test_phase_tags():
     assert {"warmup", "steady", "burst"} <= phases, phases
 
 
+def test_runner_constructor_and_arrival_stats():
+    """run_experiment.py passes the prompt list and reads live arrival stats."""
+    cfg = ExperimentConfig(base_arrival_rate=4.0, duration_s=2.0, warmup_s=0, seed=1)
+    prompts = [{"prompt": "hello", "max_new_tokens": 32}]
+    q = RequestQueue()
+    gen = LoadGenerator(q, cfg, prompts)
+    assert gen.workload == "sharp_burst"
+    assert gen.seed == 1
+    gen.set_phase("burst")
+    gen.start()
+    time.sleep(1.2)
+    gen.stop()
+    assert q.total_enqueued >= 1
+    req = q.get(timeout=0.1)
+    assert req.phase == "burst"
+    assert gen.recent_arrival_rate() >= 0.0
+    assert gen.arrival_cv() >= 0.0
+
+
 def test_rate_profiles():
     kw = dict(base_rate=0.15, burst_multiplier=5.0, burst_start_s=40, burst_duration_s=20,
               ramp_end_rate=2.0, duration_s=120)
