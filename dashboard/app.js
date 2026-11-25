@@ -1,4 +1,5 @@
-/* AMS 560 results dashboard. Reads data/<attempt>.json built by build_data.py. */
+/* AMS 560 results dashboard. Reads data/<attempt>.js built by build_data.py.
+   Data is loaded with a <script> tag, so index.html also works from file://. */
 "use strict";
 
 const ATTEMPT = new URLSearchParams(location.search).get("attempt") || "attempt_12";
@@ -453,10 +454,19 @@ function route() {
   setTimeout(() => document.querySelectorAll(`#page-${id} .js-plotly-plot`).forEach(p => Plotly.Plots.resize(p)), 30);
 }
 
-fetch(`data/${ATTEMPT}.json`).then(r => {
-  if (!r.ok) throw new Error(`data/${ATTEMPT}.json not found. Run: python dashboard/build_data.py`);
-  return r.json();
-}).then(d => {
+function loadData(attempt) {
+  return new Promise((resolve, reject) => {
+    const have = () => (window.DASHBOARD_DATA || {})[attempt];
+    if (have()) return resolve(have());
+    const s = document.createElement("script");
+    s.src = `data/${attempt}.js`;
+    s.onload = () => have() ? resolve(have()) : reject(new Error(`data/${attempt}.js has no data for ${attempt}`));
+    s.onerror = () => reject(new Error(`data/${attempt}.js not found. Run: python dashboard/build_data.py --attempt results/${attempt}`));
+    document.head.appendChild(s);
+  });
+}
+
+loadData(ATTEMPT).then(d => {
   D = d;
   document.querySelectorAll(".attempt-name").forEach(e => e.textContent = d.attempt);
   $("#side-foot").innerHTML = `Data: results/${d.attempt}<br>${d.meta.n_runs} GPU runs · seed ${d.meta.seeds.join(", ")}`;

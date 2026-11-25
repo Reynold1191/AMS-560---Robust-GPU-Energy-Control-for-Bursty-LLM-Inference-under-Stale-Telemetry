@@ -5,7 +5,10 @@ Pack one results/attempt_N folder into a single JSON file for the dashboard.
   python dashboard/build_data.py                       # results/attempt_12
   python dashboard/build_data.py --attempt results/attempt_13
 
-Writes dashboard/data/<attempt>.json with
+Writes dashboard/data/<attempt>.js (window.DASHBOARD_DATA["<attempt>"] = {...}).
+It is a script rather than a .json file so the dashboard also works when
+index.html is opened straight from disk (browsers block fetch() on file://).
+The data holds
   meta     probe, capacity table, SLO, matrix size
   runs     one row per GPU run (energy, misses, burst-phase misses, clock use)
   traces   per run: controller decisions, GPU power/clock, every request
@@ -150,9 +153,12 @@ def main(argv=None):
     data = build(args.attempt)
     out_dir = os.path.join(HERE, "data")
     os.makedirs(out_dir, exist_ok=True)
-    out = os.path.join(out_dir, data["attempt"] + ".json")
+    out = os.path.join(out_dir, data["attempt"] + ".js")
     with open(out, "w") as f:
+        f.write("window.DASHBOARD_DATA = window.DASHBOARD_DATA || {};\n")
+        f.write(f"window.DASHBOARD_DATA[{json.dumps(data['attempt'])}] = ")
         json.dump(data, f, separators=(",", ":"))
+        f.write(";\n")
     print(f"{data['meta']['n_runs']} runs -> {out} ({os.path.getsize(out) / 1e6:.1f} MB)")
 
 

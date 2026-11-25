@@ -162,7 +162,9 @@ every controller input delayed, 20 paired seeds. Writes `sim_runs.csv` and
 python analyze_results.py --results-dir results/attempt_12 --slo-target 5.0
 ```
 
-### 9. Results Dashboard (localhost)
+### 9. Results Dashboard
+
+Double-click `dashboard/index.html` (works offline, no server needed), or:
 
 ```powershell
 python dashboard/serve.py                 # opens http://localhost:8560/dashboard/

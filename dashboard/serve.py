@@ -6,6 +6,8 @@ Serve the results dashboard on localhost.
   python dashboard/serve.py --port 9000 --no-browser
   python dashboard/serve.py --rebuild       # re-pack results/attempt_12 first
 
+Opening dashboard/index.html directly from disk also works; the server is
+only needed for --rebuild convenience or to share the page on the network.
 The project root is served so the dashboard can show the figures in
 results/attempt_N/ as well as its own data file. Nothing here needs a GPU.
 """
@@ -42,7 +44,7 @@ def main(argv=None):
     ap.add_argument("--no-browser", action="store_true")
     args = ap.parse_args(argv)
 
-    data = os.path.join(HERE, "data", os.path.basename(os.path.normpath(args.attempt)) + ".json")
+    data = os.path.join(HERE, "data", os.path.basename(os.path.normpath(args.attempt)) + ".js")
     if args.rebuild or not os.path.exists(data):
         if not os.path.isdir(args.attempt):
             sys.exit(f"No results folder at {args.attempt} and no packed data at {data}")

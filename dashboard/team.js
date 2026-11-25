@@ -284,8 +284,8 @@ window.TEAM = {
     { path: "results/attempt_12/", layer: "docs", owner: 5, one: "Raw data of the final GPU run (35 runs).",
       what: ["Per-run control/telemetry/request CSVs, run_summary.csv, sweep, capacity, simulator output, figures."], ideas: [], present: "Everything on this dashboard comes from here." },
     { path: "dashboard/", layer: "docs", owner: 5, one: "This dashboard.",
-      what: ["<code>build_data.py</code> packs a results folder into JSON. <code>serve.py</code> serves it on localhost:8560. <code>app.js</code> draws the pages with Plotly."],
-      ideas: ["<code>python dashboard/serve.py</code>, or add <code>--attempt results/attempt_13 --rebuild</code> for a new attempt."], present: "Use it live during the talk." },
+      what: ["<code>build_data.py</code> packs a results folder into <code>data/&lt;attempt&gt;.js</code>. <code>serve.py</code> serves it on localhost:8560. <code>app.js</code> draws the pages with Plotly."],
+      ideas: ["Open <code>dashboard/index.html</code> directly, or run <code>python dashboard/serve.py</code>; or add <code>--attempt results/attempt_13 --rebuild</code> for a new attempt."], present: "Use it live during the talk." },
   ],
 
   talk: [
