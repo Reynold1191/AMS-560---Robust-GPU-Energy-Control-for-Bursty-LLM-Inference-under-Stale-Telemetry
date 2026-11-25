@@ -323,3 +323,33 @@ window.TEAM = {
     ["How realistic is the simulator?", "It uses measured batch times and power per clock, and the same controller code. It reproduces naive's 12 % burst miss at 2.5 s."],
   ],
 };
+
+/* Deliverables status (proposal Section 6 and the README checklist). */
+window.DELIVERABLES = {
+  proposal: [
+    ["D1", "RTX 5060 inference and synchronized telemetry testbed", "done",
+      "LLM worker, NVML sampler, clock locking and the experiment runner. 35 runs completed with 100 % clock tracking."],
+    ["D2", "Frequency–energy–latency characterization", "done",
+      "Fixed-clock sweep at all 5 clocks (J/token, P95, power) and the in-stack capacity probe. See the Testbed page."],
+    ["D3", "Observability and stale-telemetry framework", "done",
+      "Every controller input is delayed (0–2500 ms), there are 3 workloads, and the NVML refresh and clock-actuation timing was measured."],
+    ["D4", "Baseline implementations", "done",
+      "static_high and naive_slo were run on the GPU and the oracle table was built. The NVIDIA-default and oracle controllers are implemented but were not in the final GPU matrix."],
+    ["D5", "Telemetry-age-aware DVFS controller", "done",
+      "robust v2 with tests. On the GPU at 2.5 s lag it cut rush misses from 11.7 % to 2.2 %."],
+    ["D6", "Failure-boundary evaluation and ablation", "partial",
+      "Ablation done (robust_v1, robust_no_age). The failure map covers delay × workload at one burst size (×4). One seed; the 3-seed repeat is pending."],
+  ],
+  readme: [
+    ["D1", "Experiment harness + guaranteed clock reset", "done", "run_experiment.py, run_demo.py; clock reset in a finally block."],
+    ["D2", "Fixed-frequency characterisation", "done", "--sweep-clocks → sweep_summary.csv."],
+    ["D3", "Real timing characterisation", "done", "measure_timing.py, check_gpu_timing.py."],
+    ["D4", "Workload suite (steady / ramp / burst)", "done", "load_generator.py with phase tags and paired seeds."],
+    ["D5", "Delay injector", "done", "delay_buffer.py + observation.py; 0–2500 ms on every input (the plan said 0–1000 ms)."],
+    ["D6", "Baselines + oracle", "done", "controllers/, oracle_builder.py → oracle_table.csv."],
+    ["D7", "Robust controller with acceptance tests", "done", "robust_delay_budget.py; 51 GPU-free tests pass."],
+    ["D8", "Failure-boundary analysis", "partial", "Fig 7 is delay × workload at a single burst multiplier, not a full delay × burst-size heatmap."],
+    ["D9", "Ablation + non-redundancy", "done", "robust_v1 and robust_no_age on the GPU, Fig 8, and the budget non-redundancy figure."],
+    ["D10", "Scale-out simulation + reproducibility", "done", "serving_sim.py + scale_simulator.py, 1 and 8 workers, 20 paired seeds."],
+  ],
+};

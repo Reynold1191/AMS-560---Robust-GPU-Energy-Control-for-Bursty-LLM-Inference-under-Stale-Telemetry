@@ -185,3 +185,36 @@ dl.gloss dd { margin: 2px 0 0; color: var(--ink-2); }
 .qa details { border-top: 1px solid var(--line); padding: 9px 0; }
 .qa summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .qa p { margin: 6px 0 0; color: var(--ink-2); font-size: 14px; }
+
+/* ── introduction ── */
+.cast { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+@media (max-width: 1100px) { .cast { grid-template-columns: repeat(2, 1fr); } }
+.role-card { border: 1px solid var(--line); border-radius: 9px; padding: 11px 13px; background: var(--bg); font-size: 13.5px; }
+.role-card .emoji { font-size: 22px; line-height: 1; margin-bottom: 6px; }
+.role-card > b { display: block; margin-bottom: 2px; }
+.role-card span b { color: var(--ink); }
+.role-card span { color: var(--ink-2); }
+.story ol.steps li i { color: var(--ink); }
+.mgr { border-left: 4px solid; padding: 8px 12px; margin: 10px 0; border-radius: 0 8px 8px 0; background: var(--bg); font-size: 13.5px; }
+.mgr.naive { border-color: #e07b24; } .mgr.robust { border-color: #0e9f80; }
+.mgr p { margin: 5px 0 0; color: var(--ink-2); }
+.big-q { font-size: 17px; line-height: 1.5; margin: 4px 0 14px; max-width: 900px; }
+.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+@media (max-width: 1000px) { .three { grid-template-columns: 1fr; } }
+.three > div { border-top: 2px solid var(--line); padding-top: 9px; font-size: 13.5px; }
+.three > div > b { display: block; margin-bottom: 4px; }
+.three span { color: var(--ink-2); }
+.timeline { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+@media (max-width: 1100px) { .timeline { grid-template-columns: repeat(2, 1fr); } }
+.timeline > div { border-top: 3px solid var(--accent); padding-top: 8px; font-size: 13px; }
+.timeline > div > b { display: block; font-family: var(--mono); font-size: 12.5px; color: var(--accent); margin-bottom: 3px; }
+.timeline span { color: var(--ink-2); }
+.grid2.tight { gap: 22px; }
+h4.sub { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); margin: 8px 0 6px; }
+table.deliv { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.deliv td { padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.deliv td.id { font-family: var(--mono); color: var(--ink-3); width: 44px; }
+table.deliv td:last-child { width: 70px; text-align: right; }
+table.deliv .note { color: var(--ink-3); font-size: 12.5px; margin-top: 2px; }
+.deliv-sum { display: flex; flex-wrap: wrap; gap: 26px; align-items: baseline; margin-top: 16px; font-size: 14px; color: var(--ink-2); }
+.deliv-sum .big { font-size: 24px; font-weight: 700; color: var(--accent); margin-right: 6px; font-variant-numeric: tabular-nums; }

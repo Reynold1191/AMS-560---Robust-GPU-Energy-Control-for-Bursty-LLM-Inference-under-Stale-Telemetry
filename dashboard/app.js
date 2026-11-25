@@ -83,6 +83,21 @@ function table(el, cols, rows, { sortable = true, onRow = null } = {}) {
   draw();
 }
 
+/* ───────────── Introduction ───────────── */
+function renderIntro() {
+  const DL = window.DELIVERABLES, badge = s => s === "done"
+    ? '<span class="badge b-yes">Done</span>' : '<span class="badge b-trend">Partial</span>';
+  const tbl = rows => rows.map(([id, name, st, note]) =>
+    `<tr><td class="id">${id}</td><td><b>${name}</b><div class="note">${note}</div></td><td>${badge(st)}</td></tr>`).join("");
+  $("#deliv-prop").innerHTML = tbl(DL.proposal);
+  $("#deliv-readme").innerHTML = tbl(DL.readme);
+  const n = rows => rows.filter(r => r[2] === "done").length;
+  $("#deliv-sum").innerHTML =
+    `<div><span class="big">${n(DL.proposal)} / ${DL.proposal.length}</span> proposal deliverables done, the rest partial</div>` +
+    `<div><span class="big">${n(DL.readme)} / ${DL.readme.length}</span> README checklist items done, the rest partial</div>` +
+    `<div class="muted">Remaining: a 3-seed GPU repeat for significance, and a burst-size axis for the failure map.</div>`;
+}
+
 /* ───────────── Overview ───────────── */
 function renderOverview() {
   const ds = delays(), dmax = ds[ds.length - 1];
@@ -441,12 +456,12 @@ function drawFiles() {
 }
 
 /* ───────────── routing ───────────── */
-const RENDER = { overview: renderOverview, results: renderResults, explorer: renderExplorer, ablation: renderAblation,
+const RENDER = { intro: renderIntro, overview: renderOverview, results: renderResults, explorer: renderExplorer, ablation: renderAblation,
   testbed: renderTestbed, simulation: renderSimulation, figures: renderFigures, team: renderTeam };
 const done = new Set();
 function route() {
-  const page = (location.hash || "#overview").slice(1);
-  const id = RENDER[page] ? page : "overview";
+  const page = (location.hash || "#intro").slice(1);
+  const id = RENDER[page] ? page : "intro";
   document.querySelectorAll(".page").forEach(p => p.classList.toggle("on", p.id === "page-" + id));
   document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("on", a.dataset.page === id));
   if (!done.has(id) || id === "explorer") { RENDER[id](); done.add(id); }

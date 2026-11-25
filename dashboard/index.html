@@ -17,6 +17,7 @@
     </div>
   </div>
   <nav id="nav">
+    <a href="#intro" data-page="intro">Introduction</a>
     <a href="#overview" data-page="overview">Overview</a>
     <a href="#results" data-page="results">Results</a>
     <a href="#explorer" data-page="explorer">Run explorer</a>
@@ -31,6 +32,127 @@
 </aside>
 
 <main id="main">
+  <!-- ───────────── Introduction ───────────── -->
+  <section class="page" id="page-intro">
+    <header class="page-head">
+      <p class="eyebrow">Start here</p>
+      <h1>What this project is about, explained with a restaurant kitchen</h1>
+      <p class="lede">An LLM server is like a busy kitchen. Requests are orders, and the GPU is the cooking crew. A manager decides
+        how hard the kitchen works. Working harder serves food faster but burns more gas and electricity. This project is about
+        a manager who has to make that call while looking at a status board that is <b>out of date</b>.</p>
+    </header>
+
+    <div class="card">
+      <h3>The cast</h3>
+      <p class="muted">Every part of the real system has a kitchen counterpart.</p>
+      <div class="cast">
+        <div class="role-card"><div class="emoji">🧾</div><b>Order</b><span>= one LLM <b>request</b> (a prompt that needs an answer)</span></div>
+        <div class="role-card"><div class="emoji">📌</div><b>Ticket rail</b><span>= the <b>request queue</b> of orders waiting to be cooked</span></div>
+        <div class="role-card"><div class="emoji">👩‍🍳</div><b>Kitchen crew</b><span>= the <b>GPU</b>. It cooks 16 orders per round (<b>batch size 16</b>)</span></div>
+        <div class="role-card"><div class="emoji">🔥</div><b>Stove setting</b><span>= the <b>GPU clock</b> (180 to 2122 MHz). Higher is faster but uses more power</span></div>
+        <div class="role-card"><div class="emoji">💡</div><b>Gas &amp; electricity bill</b><span>= <b>energy</b>, measured as joules per output token (<b>J/token</b>)</span></div>
+        <div class="role-card"><div class="emoji">⏱️</div><b>Service promise</b><span>= the <b>SLO</b>: every dish leaves the kitchen within <b>5 s</b></span></div>
+        <div class="role-card"><div class="emoji">🎟️</div><b>Allowed late dishes</b><span>= the <b>error budget</b>: at most <b>5 %</b> may be late. <b>Burn rate</b> is how fast we use it up</span></div>
+        <div class="role-card"><div class="emoji">🖥️</div><b>Status board</b><span>= <b>telemetry</b>: power, clock, orders waiting, recent delivery times (P95)</span></div>
+        <div class="role-card"><div class="emoji">🕰️</div><b>Board lag</b><span>= <b>stale telemetry</b>: the board shows the kitchen as it was 0, 0.5, 1.25 or 2.5 s ago</span></div>
+        <div class="role-card"><div class="emoji">🧑‍💼</div><b>Manager</b><span>= the <b>controller</b>. Every second it sets the stove for the next second</span></div>
+        <div class="role-card"><div class="emoji">🍔</div><b>Lunch rush</b><span>= the <b>sharp burst</b>: 4× the normal orders for 20 s. Also <b>steady</b> and slowly growing <b>ramp</b> days</span></div>
+        <div class="role-card"><div class="emoji">📖</div><b>Recipe</b><span>= the <b>LLM itself</b>. The manager never changes it, so answers are identical. Only the speed changes</span></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card story">
+        <h3>The problem: a manager reading an old board</h3>
+        <ol class="steps">
+          <li>At 12:00:00 a lunch rush starts and orders pile onto the rail.</li>
+          <li>The board only refreshes with a lag. At 12:00:02 it still shows <i>"rail almost empty, dishes going out fast"</i>.</li>
+          <li>A manager who trusts the board says <i>"we're quiet, turn the stove down to save gas"</i>, at exactly the wrong moment.</li>
+          <li>By the time the board shows the pile-up, there is a backlog. The kitchen needs several rounds to clear it and many dishes are late.</li>
+          <li>After the rush the opposite happens. The board's <i>"late dishes in the last minute"</i> number stays bad for up to 60 s, so the
+            manager keeps the stove on full with an empty rail and wastes gas.</li>
+        </ol>
+        <p class="muted">The two failure modes are <b>reacting late</b>, which causes SLO misses, and <b>calming down late</b>, which wastes energy.
+          The staler the board, the worse both get.</p>
+      </div>
+      <div class="card story">
+        <h3>Our two managers</h3>
+        <div class="mgr naive">
+          <b>Naive manager</b> <code>naive_slo</code>
+          <p>Looks at the board and believes it is live. If recent dishes were slow, turn up. If the rail is empty and dishes are fast,
+            turn down.</p>
+        </div>
+        <div class="mgr robust">
+          <b>Robust manager</b> <code>robust</code>
+          <p><b>1. Reads the timestamp.</b> "This board is 2.5 s old, and a stove change takes 0.7 s to bite, so I plan 3.2 s ahead."</p>
+          <p><b>2. Watches the rail, not the average.</b> The rail growing is an early sign. A one-minute delivery-time average is a late one.
+            When the rail is surging it projects the pile-up forward and turns up <i>before</i> the board shows the slowdown.</p>
+          <p><b>3. Ignores stale bad news.</b> If the rail has been empty for the whole lag window, it knows the bad average is history
+            and turns down.</p>
+        </div>
+        <p class="muted">Both managers share one safety rule, the <b>capacity floor</b>: never set the stove so low that the kitchen
+          serves fewer orders than 1.25 × the order rate it sees. So the comparison is about the extra judgement only.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>The research question</h3>
+      <p class="big-q">If the manager knows how old the board is and plans for it, can the kitchen use less energy
+        <b>and</b> keep its 5-second promise better, when the board lags and lunch rushes hit?</p>
+      <div class="three">
+        <div><b>How we test it</b><span>A real RTX 5060 laptop GPU serving Qwen2.5-0.5B. Each 2-minute run has 10 s warm-up,
+          40 s normal, a 20 s rush and 50 s recovery. Same orders for both managers (paired seed).</span></div>
+        <div><b>What we vary</b><span>Manager (naive / robust, plus 2 ablations), board lag (0 / 500 / 1250 / 2500 ms) and type of
+          day (steady / ramp / sharp burst). That is 35 runs per seed.</span></div>
+        <div><b>What we measure</b><span>Energy per output token, the share of orders that broke the 5 s promise (overall and during
+          the rush), P95 latency, and how often the stove was changed.</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>What happened in the kitchen (attempt_12)</h3>
+      <div class="three">
+        <div><b class="good">Rush with a 2.5 s-old board</b><span>The naive manager was late on 11.7 % of rush orders (16 of 137).
+          The robust manager was late on 2.2 % (3 of 137).</span></div>
+        <div><b class="good">Gas bill on rush days</b><span>Robust used 5–6 % less energy than naive in 3 of 4 lag levels, mostly by turning the
+          stove down after the rush. Both use 11–27 % less than running full blast all day (static_high).</span></div>
+        <div><b>Quiet and ramp days</b><span>No real difference. Both managers kept every promise and used about the same energy.
+          That is expected: there is nothing to react to.</span></div>
+      </div>
+      <p class="muted" style="margin-top:10px">Caveat: one seed per condition on the GPU. A 20-seed kitchen simulator shows the same pattern.
+        A 3-seed repeat on the GPU is the remaining step for statistical significance. Details are on the Overview and Results pages.</p>
+    </div>
+
+    <div class="card">
+      <h3>What we built and ran</h3>
+      <div class="timeline">
+        <div><b>Sep</b><span>Proposal and team plan. Each of 5 members owns a layer (data, controllers, metrics, load/simulation, GPU).</span></div>
+        <div><b>Oct</b><span>Midterm: modules on main with unit tests. Delay buffer, controllers, workload generator and first simulator.</span></div>
+        <div><b>attempt_1–5</b><span>Bring-up on the RTX 5060. Found decode is CPU-bound, so we switched to long-context prompts where the clock matters.</span></div>
+        <div><b>attempt_6–7</b><span>Found controllers dropping to 180 MHz in quiet seconds. Added the capacity floor and in-stack capacity probe.</span></div>
+        <div><b>attempt_8–11</b><span>~10 h of repeat runs. naive degrades with lag, but the old robust ≈ naive. Diagnosed why (lagging signals).</span></div>
+        <div><b>attempt_12</b><span>Robust v2 (forecast over board age, lag-aware) with a fixed 5 s SLO, ablations and a 20-seed simulator. Robust wins on rushes.</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Deliverables status</h3>
+      <p class="muted">Two lists exist: the 6 deliverables in the proposal (Section 6) and the 10-item checklist in the README.
+        Status is what is on the repository's main branch now.</p>
+      <div class="grid2 tight">
+        <div>
+          <h4 class="sub">Proposal deliverables</h4>
+          <table class="deliv" id="deliv-prop"></table>
+        </div>
+        <div>
+          <h4 class="sub">README checklist</h4>
+          <table class="deliv" id="deliv-readme"></table>
+        </div>
+      </div>
+      <div class="deliv-sum" id="deliv-sum"></div>
+    </div>
+  </section>
+
   <!-- ───────────── Overview ───────────── -->
   <section class="page" id="page-overview">
     <header class="page-head">
