@@ -1,0 +1,162 @@
+Results folder : D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12
+Started        : 2026-11-25 12:33:03
+Seeds          : [42]  (sweep: [42])
+Matrix         : PRIMARY ONLY - naive_slo, robust x [0, 500, 1250, 2500] ms x ['steady', 'ramp', 'sharp_burst'] x 1 paired seeds + ['robust_v1', 'robust_no_age'] on sharp_burst
+Load           : chosen by the clock-sensitivity benchmark (phase 1b)
+
+======================================================================
+PHASE 0: Environment check
+======================================================================
+  $ nvidia-smi --query-gpu=name,driver_version --format=csv,noheader
+  $ D:\Apps\Anaconda_app\envs\general\python.exe -c import torch, pynvml, transformers; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, torch.cuda.get_device_name(0))
+  Power scheme: Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
+
+======================================================================
+PHASE 1b: Clock-sensitivity benchmark (choose model / batch / rate)
+======================================================================
+  $ D:\Apps\Anaconda_app\envs\general\python.exe bench_clock_sensitivity.py --out D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\clock_sensitivity.json --prompts-file prompts/long_context.jsonl
+Using Qwen/Qwen2.5-0.5B-Instruct, batch 16 (clock sensitivity 11.92x)
+
+======================================================================
+PHASE 1c: Top-clock capacity probe (real serving stack) -> base rate
+======================================================================
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller static_high --workload steady --base-rate 11.97 --duration 40 --warmup 10 --seed 1 --run-id probe_top --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\probe
+Top clock in the real stack: 2.00 s per full batch = 8.00 req/s (benchmark: 2.01 s). Base rate 1.8 req/s, burst peak 7.20 req/s.
+
+======================================================================
+PHASE 2: Fixed-clock sweep (sharp_burst, every verified clock)
+======================================================================
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --sweep-clocks --workload sharp_burst --seeds 42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12
+  $ D:\Apps\Anaconda_app\envs\general\python.exe capacity_model.py --bench D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\clock_sensitivity.json --sweep-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\sweep --probe-csv D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\probe\probe_top_requests.csv --out D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+======================================================================
+PHASE 3: SLO calibration
+======================================================================
+  $ D:\Apps\Anaconda_app\envs\general\python.exe calibrate_slo.py --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --budget-ratio 0.05
+Using fixed SLO 5.0 s (calibration suggested 4.0 s; pass --calibrated-slo to use it)
+Budget 5%, static_efficient 2122 MHz
+
+======================================================================
+PHASE 4: Oracle lookup table
+======================================================================
+  $ D:\Apps\Anaconda_app\envs\general\python.exe oracle_builder.py --sweep-csv D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\sweep_summary.csv --slo-target 5.0 --out D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\oracle_table.csv
+
+======================================================================
+PHASE 5: Controller matrix (35 runs)
+======================================================================
+
+  [1/35] robust_d0_ramp_s42   elapsed 0 min, ETA nan min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 0 --workload ramp --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d0_ramp_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [2/35] naive_slo_d1250_ramp_s42   elapsed 2 min, ETA 74 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 1250 --workload ramp --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d1250_ramp_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [3/35] robust_d1250_steady_s42   elapsed 4 min, ETA 72 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 1250 --workload steady --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d1250_steady_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [4/35] naive_slo_d1250_sharp_burst_s42   elapsed 7 min, ETA 69 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 1250 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d1250_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [5/35] robust_no_age_d0_sharp_burst_s42   elapsed 9 min, ETA 67 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust_no_age --delay-ms 0 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_no_age_d0_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [6/35] naive_slo_d2500_sharp_burst_s42   elapsed 11 min, ETA 65 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 2500 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d2500_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [7/35] robust_v1_d1250_sharp_burst_s42   elapsed 13 min, ETA 63 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust_v1 --delay-ms 1250 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_v1_d1250_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [8/35] naive_slo_d0_sharp_burst_s42   elapsed 15 min, ETA 61 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 0 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d0_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [9/35] static_high_d0_sharp_burst_s42   elapsed 17 min, ETA 58 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller static_high --delay-ms 0 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id static_high_d0_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [10/35] static_high_d0_steady_s42   elapsed 19 min, ETA 56 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller static_high --delay-ms 0 --workload steady --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id static_high_d0_steady_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [11/35] naive_slo_d2500_ramp_s42   elapsed 22 min, ETA 54 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 2500 --workload ramp --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d2500_ramp_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [12/35] naive_slo_d500_ramp_s42   elapsed 24 min, ETA 52 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 500 --workload ramp --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d500_ramp_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [13/35] robust_d500_ramp_s42   elapsed 26 min, ETA 50 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 500 --workload ramp --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d500_ramp_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [14/35] robust_v1_d0_sharp_burst_s42   elapsed 28 min, ETA 48 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust_v1 --delay-ms 0 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_v1_d0_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [15/35] naive_slo_d0_ramp_s42   elapsed 30 min, ETA 45 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 0 --workload ramp --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d0_ramp_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [16/35] robust_d500_sharp_burst_s42   elapsed 32 min, ETA 43 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 500 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d500_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [17/35] robust_v1_d2500_sharp_burst_s42   elapsed 35 min, ETA 41 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust_v1 --delay-ms 2500 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_v1_d2500_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [18/35] naive_slo_d2500_steady_s42   elapsed 37 min, ETA 39 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 2500 --workload steady --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d2500_steady_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [19/35] static_high_d0_ramp_s42   elapsed 39 min, ETA 37 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller static_high --delay-ms 0 --workload ramp --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id static_high_d0_ramp_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [20/35] naive_slo_d0_steady_s42   elapsed 41 min, ETA 35 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 0 --workload steady --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d0_steady_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [21/35] robust_no_age_d1250_sharp_burst_s42   elapsed 43 min, ETA 32 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust_no_age --delay-ms 1250 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_no_age_d1250_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [22/35] robust_d1250_ramp_s42   elapsed 45 min, ETA 30 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 1250 --workload ramp --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d1250_ramp_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [23/35] naive_slo_d500_sharp_burst_s42   elapsed 48 min, ETA 28 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 500 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d500_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [24/35] naive_slo_d500_steady_s42   elapsed 50 min, ETA 26 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 500 --workload steady --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d500_steady_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [25/35] robust_no_age_d500_sharp_burst_s42   elapsed 52 min, ETA 24 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust_no_age --delay-ms 500 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_no_age_d500_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [26/35] robust_v1_d500_sharp_burst_s42   elapsed 54 min, ETA 22 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust_v1 --delay-ms 500 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_v1_d500_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [27/35] robust_d1250_sharp_burst_s42   elapsed 56 min, ETA 19 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 1250 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d1250_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [28/35] robust_d500_steady_s42   elapsed 58 min, ETA 17 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 500 --workload steady --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d500_steady_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [29/35] robust_d2500_sharp_burst_s42   elapsed 61 min, ETA 15 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 2500 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d2500_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [30/35] naive_slo_d1250_steady_s42   elapsed 63 min, ETA 13 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller naive_slo --delay-ms 1250 --workload steady --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id naive_slo_d1250_steady_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [31/35] robust_no_age_d2500_sharp_burst_s42   elapsed 65 min, ETA 11 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust_no_age --delay-ms 2500 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_no_age_d2500_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [32/35] robust_d2500_ramp_s42   elapsed 67 min, ETA 9 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 2500 --workload ramp --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d2500_ramp_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [33/35] robust_d0_sharp_burst_s42   elapsed 69 min, ETA 6 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 0 --workload sharp_burst --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d0_sharp_burst_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [34/35] robust_d0_steady_s42   elapsed 71 min, ETA 4 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 0 --workload steady --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d0_steady_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+  [35/35] robust_d2500_steady_s42   elapsed 74 min, ETA 2 min
+  $ D:\Apps\Anaconda_app\envs\general\python.exe run_experiment.py --controller robust --delay-ms 2500 --workload steady --seed 42 --slo-target 5.0 --static-efficient-mhz 2122 --run-id robust_d2500_steady_s42 --model Qwen/Qwen2.5-0.5B-Instruct --prompts-file prompts/long_context.jsonl --batch-size 16 --base-rate 1.8 --burst-multiplier 4.0 --budget-ratio 0.05 --duration 120.0 --warmup 10.0 --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --capacity-file D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\capacity.json
+
+======================================================================
+PHASE 6: Scale-out simulation and figures
+======================================================================
+  $ D:\Apps\Anaconda_app\envs\general\python.exe scale_simulator.py --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --slo-target 5.0 --base-rate 1.8 --n-workers 1 8 --seeds 20
+  $ D:\Apps\Anaconda_app\envs\general\python.exe analyze_results.py --results-dir D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12 --slo-target 5.0 --workload sharp_burst
+
+Paired summary (35 conditions x 1 seeds) -> D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12\paired_summary.csv
+  All 35 conditions have all 1 seeds.
+
+DONE in 96 min -> D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_12

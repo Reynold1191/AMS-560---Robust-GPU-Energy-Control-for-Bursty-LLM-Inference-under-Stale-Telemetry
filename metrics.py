@@ -1,231 +1,265 @@
-"""Energy, latency summaries, and per-run CSV logs.
-
-The collector accepts both call styles used in this project:
-
-- Team plan: ``MetricsCollector(run_id, results_dir, slo_target_s)``
-- Experiment runner: ``MetricsCollector(slo_target_s, results_dir, run_id)``
+"""
+metrics.py
+Energy calculation (trapezoidal integration), percentile statistics,
+and a thread-safe MetricsCollector used by the experiment runner.
 """
 
+from __future__ import annotations
+
 import csv
+import math
 import os
+import statistics
 import threading
+import time
+from typing import Dict, List, Optional, Tuple
+
+from request_queue import Request
+from telemetry import GpuSample
 
 
-def joules_from_samples(samples) -> float:
-    """Trapezoidal energy in joules. Returns 0 when fewer than two samples exist."""
-    if samples is None or len(samples) < 2:
+# ---------------------------------------------------------------------------
+# Energy integration
+# ---------------------------------------------------------------------------
+
+def joules_from_samples(samples: List[GpuSample]) -> float:
+    """
+    Compute total GPU energy in joules from timestamped power samples using
+    the trapezoidal rule:
+
+        E ≈ Σ  0.5 × (P_i + P_{i+1}) × (t_{i+1} − t_i)
+
+    Handles unsorted samples and empty lists gracefully.
+    """
+    if len(samples) < 2:
         return 0.0
-    ordered = sorted(samples, key=lambda sample: sample.t)
-    total = 0.0
-    for previous, current in zip(ordered, ordered[1:]):
-        dt = current.t - previous.t
-        if dt <= 0:
-            continue
-        total += 0.5 * (previous.power_w + current.power_w) * dt
-    return total
+    ordered = sorted(samples, key=lambda s: s.t)
+    energy = 0.0
+    for a, b in zip(ordered, ordered[1:]):
+        dt = b.t - a.t
+        energy += 0.5 * (a.power_w + b.power_w) * dt
+    return energy
 
 
-def summary_stats(latencies) -> dict:
-    """Percentiles use the same index rule as SLOBudget.percentile_latency."""
-    if not latencies:
-        return {"p50": 0.0, "p95": 0.0, "p99": 0.0, "mean": 0.0}
-    values = sorted(latencies)
-    n = len(values)
+def joules_per_token(samples: List[GpuSample], total_tokens: int) -> float:
+    """Normalised energy efficiency metric."""
+    j = joules_from_samples(samples)
+    return j / total_tokens if total_tokens > 0 else float("nan")
 
-    def percentile(p: float) -> float:
-        return values[min(int(p * n), n - 1)]
 
+# ---------------------------------------------------------------------------
+# Latency statistics
+# ---------------------------------------------------------------------------
+
+def percentile(values: List[float], p: float) -> float:
+    """
+    p-th percentile of a list of floats (0 ≤ p ≤ 1).
+    Returns NaN for empty lists.
+    """
+    if not values:
+        return float("nan")
+    s = sorted(values)
+    idx = min(int(math.ceil(p * len(s))) - 1, len(s) - 1)
+    return s[max(idx, 0)]
+
+
+def summary_stats(values: List[float]) -> Dict[str, float]:
+    """Return a dict with mean, std, p50, p95, p99, min, max."""
+    if not values:
+        nan = float("nan")
+        return dict(mean=nan, std=nan, p50=nan, p95=nan, p99=nan,
+                    min=nan, max=nan, n=0)
     return {
-        "p50": percentile(0.50),
-        "p95": percentile(0.95),
-        "p99": percentile(0.99),
-        "mean": sum(values) / n,
+        "mean": statistics.mean(values),
+        "std":  statistics.stdev(values) if len(values) > 1 else 0.0,
+        "p50":  percentile(values, 0.50),
+        "p95":  percentile(values, 0.95),
+        "p99":  percentile(values, 0.99),
+        "min":  min(values),
+        "max":  max(values),
+        "n":    len(values),
     }
 
 
+# ---------------------------------------------------------------------------
+# Arrival-rate coefficient of variation
+# ---------------------------------------------------------------------------
+
+def arrival_cv(inter_arrivals: List[float]) -> float:
+    """CV of inter-arrival times (high = bursty)."""
+    if len(inter_arrivals) < 2:
+        return 0.0
+    mu = statistics.mean(inter_arrivals)
+    if mu <= 0:
+        return 0.0
+    return statistics.stdev(inter_arrivals) / mu
+
+
+# ---------------------------------------------------------------------------
+# Thread-safe metrics collector
+# ---------------------------------------------------------------------------
+
 class MetricsCollector:
-    def __init__(self, run_id, results_dir, slo_target_s, warmup_s=0):
-        if isinstance(run_id, (int, float)) and not isinstance(run_id, bool):
-            slo_target_s, results_dir, run_id = run_id, results_dir, slo_target_s
-        self.run_id = str(run_id)
+    """
+    Accumulates all request and run-level metrics during an experiment.
+
+    Thread safety: on_request() and add_control_event() may be called
+    from multiple threads; internal state is protected by a Lock.
+    """
+
+    def __init__(self, slo_target_s: float, results_dir: str, run_id: str):
+        self.slo_target_s = slo_target_s
         self.results_dir = results_dir
-        self.output_dir = results_dir
-        self.slo_target_s = float(slo_target_s)
-        self.warmup_s = warmup_s
+        self.run_id = run_id
+        os.makedirs(results_dir, exist_ok=True)
+
         self._lock = threading.Lock()
-        self._requests = []
-        self._control_events = []
-        self._telemetry = []
-        self._warmup_end_t = None
-        self.requests = self._requests
-        self.control_events = self._control_events
-        self.telemetry = self._telemetry
+        self._requests:      List[Request]  = []
+        self._control_events: List[dict]    = []
+        self._warmup_end_t:   Optional[float] = None
 
-    @property
-    def warmup_end_t(self):
-        return self._warmup_end_t
+    # ------------------------------------------------------------------ #
+    # Callbacks                                                             #
+    # ------------------------------------------------------------------ #
 
-    @warmup_end_t.setter
-    def warmup_end_t(self, value):
+    def set_warmup_end(self, t: float) -> None:
         with self._lock:
-            self._warmup_end_t = value
+            self._warmup_end_t = t
 
-    def set_warmup_end(self, t) -> None:
-        self.warmup_end_t = t
-
-    def record_request(self, request) -> None:
+    def on_request(self, req: Request) -> None:
+        """Called by LLMWorker for every completed request."""
         with self._lock:
-            self._requests.append(request)
+            self._requests.append(req)
 
-    on_request = record_request
-
-    def record_control(self, event) -> None:
+    def add_control_event(self, event: dict) -> None:
+        """Called by the control loop on every decision."""
         with self._lock:
-            self._control_events.append(dict(event))
+            self._control_events.append(event)
 
-    add_control_event = record_control
-    record_control_event = record_control
+    # ------------------------------------------------------------------ #
+    # Post-run analysis                                                     #
+    # ------------------------------------------------------------------ #
 
-    def record_telemetry(self, sample) -> None:
+    def measurement_requests(self) -> List[Request]:
+        """Only requests that completed after the warm-up phase."""
         with self._lock:
-            self._telemetry.append(sample)
+            if self._warmup_end_t is None:
+                return list(self._requests)
+            return [r for r in self._requests
+                    if r.finish_t is not None
+                    and r.finish_t >= self._warmup_end_t]
 
-    def measurement_requests(self):
-        with self._lock:
-            requests = list(self._requests)
-            warmup_end = self._warmup_end_t
-        if warmup_end is None:
-            return requests
-        return [
-            request for request in requests
-            if request.finish_t is not None and request.finish_t >= warmup_end
-        ]
-
-    def latencies(self):
-        return [
-            request.latency_s
-            for request in self.measurement_requests()
-            if request.latency_s is not None
-        ]
-
-    def total_output_tokens(self) -> int:
-        return sum(
-            getattr(request, "generated_tokens", 0) or 0
-            for request in self.measurement_requests()
-        )
+    def latencies(self) -> List[float]:
+        return [r.latency_s for r in self.measurement_requests()
+                if r.latency_s is not None]
 
     def miss_rate(self) -> float:
-        latencies = self.latencies()
-        if not latencies:
-            return 0.0
-        misses = sum(latency > self.slo_target_s for latency in latencies)
-        return misses / len(latencies)
+        lats = self.latencies()
+        if not lats:
+            return float("nan")
+        return sum(1 for l in lats if l > self.slo_target_s) / len(lats)
 
-    slo_miss_rate = miss_rate
+    def total_output_tokens(self) -> int:
+        return sum(r.generated_tokens for r in self.measurement_requests())
 
-    def _measurement_samples(self, samples):
-        if samples is None:
-            with self._lock:
-                samples = list(self._telemetry)
-        warmup_end = self._warmup_end_t
-        if warmup_end is None:
-            return list(samples)
-        return [sample for sample in samples if getattr(sample, "t", 0) >= warmup_end]
+    def run_summary(
+        self,
+        samples: List[GpuSample],
+        config,
+        recovery_s: Optional[float] = None,
+        max_queue_len: int = 0,
+    ) -> dict:
+        """Compute the full run summary dict for run_summary.csv."""
+        lats = self.latencies()
+        tok = self.total_output_tokens()
+        meas_samples = [s for s in samples
+                        if self._warmup_end_t is None
+                        or s.t >= self._warmup_end_t]
 
-    def run_summary(self, samples, config, recovery_s=None, max_queue_len=0) -> dict:
-        latencies = self.latencies()
-        tokens = self.total_output_tokens()
-        total_j = joules_from_samples(self._measurement_samples(samples))
-        stats = summary_stats(latencies)
+        j_total = joules_from_samples(meas_samples)
+        lat_stats = summary_stats(lats)
+
         return {
-            "run_id": self.run_id,
-            "seed": getattr(config, "seed", 0),
-            "controller": getattr(config, "controller", ""),
-            "delay_ms": getattr(config, "delay_ms", 0.0),
-            "workload": getattr(config, "workload", ""),
-            "total_j": total_j,
-            "output_tokens": tokens,
-            "j_per_token": (total_j / tokens) if tokens else float("nan"),
-            "p50": stats["p50"],
-            "p95": stats["p95"],
-            "p99": stats["p99"],
-            "mean_lat": stats["mean"],
-            "miss_rate": self.miss_rate(),
-            "n_requests": len(latencies),
-            "max_queue": max_queue_len,
-            "recovery_s": recovery_s,
-            "use_age": getattr(config, "use_telemetry_age", True),
-            "use_budget": getattr(config, "use_error_budget", True),
+            "run_id":        self.run_id,
+            "seed":          getattr(config, "seed", 0),
+            "controller":    config.controller,
+            "delay_ms":      config.delay_ms,
+            "workload":      config.workload,
+            "total_j":       j_total,
+            "output_tokens": tok,
+            "j_per_token":   j_total / tok if tok > 0 else float("nan"),
+            "p50":           lat_stats["p50"],
+            "p95":           lat_stats["p95"],
+            "p99":           lat_stats["p99"],
+            "mean_lat":      lat_stats["mean"],
+            "miss_rate":     self.miss_rate(),
+            "n_requests":    len(lats),
+            "max_queue":     max_queue_len,
+            "recovery_s":    recovery_s or float("nan"),
+            "use_age":       getattr(config, "use_telemetry_age", True),
+            "use_budget":    getattr(config, "use_error_budget", True),
             "burst_multiplier": getattr(config, "burst_multiplier", 1.0),
         }
 
-    def energy_per_token(self) -> float:
-        tokens = self.total_output_tokens()
-        if not tokens:
-            return 0.0
-        return joules_from_samples(self._measurement_samples(None)) / tokens
+    # ------------------------------------------------------------------ #
+    # CSV serialisation                                                     #
+    # ------------------------------------------------------------------ #
 
     def save_requests_csv(self) -> str:
-        os.makedirs(self.results_dir, exist_ok=True)
+        """Write requests.csv and return the path."""
         path = os.path.join(self.results_dir, f"{self.run_id}_requests.csv")
-        fields = [
-            "request_id", "arrival_t", "start_t", "finish_t", "latency_s",
-            "queue_wait_s", "service_time_s", "prompt_tokens", "output_tokens",
-            "phase", "slo_miss",
-        ]
-        with open(path, "w", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=fields)
-            writer.writeheader()
-            for request in self.measurement_requests():
-                row = request.to_dict() if hasattr(request, "to_dict") else {}
-                latency = row.get("latency_s", getattr(request, "latency_s", None))
+        fields = ["request_id", "arrival_t", "start_t", "finish_t",
+                  "latency_s", "queue_wait_s", "service_time_s",
+                  "prompt_tokens", "output_tokens", "phase",
+                  "slo_miss"]
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=fields)
+            w.writeheader()
+            for r in self.measurement_requests():
+                row = r.to_dict()
                 row["slo_miss"] = (
-                    latency > self.slo_target_s if latency is not None else None
+                    r.latency_s > self.slo_target_s
+                    if r.latency_s is not None else None
                 )
-                writer.writerow({key: row.get(key, "") for key in fields})
+                w.writerow({k: row.get(k, "") for k in fields})
         return path
 
-    export_requests_csv = save_requests_csv
-
-    def save_telemetry_csv(self, samples=None) -> str:
-        os.makedirs(self.results_dir, exist_ok=True)
+    def save_telemetry_csv(self, samples: List[GpuSample]) -> str:
+        """Write telemetry.csv and return the path."""
         path = os.path.join(self.results_dir, f"{self.run_id}_telemetry.csv")
-        if samples is None:
-            with self._lock:
-                samples = list(self._telemetry)
-        fields = ["t", "power_w", "graphics_mhz", "sm_mhz", "util_pct", "temp_c", "phase"]
-        with open(path, "w", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=fields)
-            writer.writeheader()
-            for sample in samples:
-                writer.writerow({field: getattr(sample, field, None) for field in fields})
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            w = csv.writer(f)
+            w.writerow(["t", "power_w", "graphics_mhz", "sm_mhz",
+                         "util_pct", "temp_c", "phase"])
+            for s in samples:
+                w.writerow([
+                    s.t, s.power_w, s.graphics_mhz, s.sm_mhz,
+                    s.util_pct, s.temp_c, s.phase
+                ])
         return path
-
-    export_telemetry_csv = save_telemetry_csv
 
     def save_control_csv(self) -> str:
-        os.makedirs(self.results_dir, exist_ok=True)
+        """Write control.csv and return the path."""
         path = os.path.join(self.results_dir, f"{self.run_id}_control.csv")
         with self._lock:
             events = list(self._control_events)
-        with open(path, "w", newline="", encoding="utf-8") as handle:
-            if not events:
-                return path
-            fields = list(events[0].keys())
-            writer = csv.DictWriter(handle, fieldnames=fields, extrasaction="ignore")
-            writer.writeheader()
-            writer.writerows(events)
+        if not events:
+            return path
+        fields = list(events[0].keys())
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+            w.writeheader()
+            w.writerows(events)
         return path
 
-    export_control_csv = save_control_csv
-
-    def append_run_summary(self, summary_dict) -> str:
-        os.makedirs(self.results_dir, exist_ok=True)
+    def append_run_summary(self, summary: dict) -> str:
+        """Append one row to the shared run_summary.csv."""
         path = os.path.join(self.results_dir, "run_summary.csv")
-        write_header = not os.path.exists(path) or os.path.getsize(path) == 0
-        with open(path, "a", newline="", encoding="utf-8") as handle:
-            writer = csv.DictWriter(handle, fieldnames=list(summary_dict.keys()))
+        write_header = not os.path.exists(path)
+        with open(path, "a", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=list(summary.keys()),
+                               extrasaction="ignore")
             if write_header:
-                writer.writeheader()
-            writer.writerow(summary_dict)
+                w.writeheader()
+            w.writerow(summary)
         return path

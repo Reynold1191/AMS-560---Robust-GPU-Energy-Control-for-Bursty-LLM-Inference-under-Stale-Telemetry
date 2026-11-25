@@ -1,0 +1,21 @@
+controller,clock_mhz,reason,scenario_name
+static_efficient,667,STATIC(667MHz),Fresh calm
+static_efficient,667,STATIC(667MHz),Stale 600 ms
+static_efficient,667,STATIC(667MHz),SLO miss
+static_efficient,667,STATIC(667MHz),Budget burn
+naive_slo,1147,SAFE_DOWNCLOCK,Fresh calm
+naive_slo,1147,SAFE_DOWNCLOCK,Stale 600 ms
+naive_slo,2122,EMERGENCY_SLO,SLO miss
+naive_slo,1147,SAFE_DOWNCLOCK,Budget burn
+robust_no_age,1147,SAFE_DOWNCLOCK(r=0.00),Fresh calm
+robust_no_age,1147,SAFE_DOWNCLOCK(r=0.00),Stale 600 ms
+robust_no_age,2602,EMERGENCY_SLO,SLO miss
+robust_no_age,2602,EMERGENCY_BUDGET,Budget burn
+robust_no_budget,1147,SAFE_DOWNCLOCK(r=0.00),Fresh calm
+robust_no_budget,1635,HOLD(r=0.21) STALE_OBSERVATION,Stale 600 ms
+robust_no_budget,2602,EMERGENCY_SLO,SLO miss
+robust_no_budget,1147,SAFE_DOWNCLOCK(r=0.00),Budget burn
+robust,1147,SAFE_DOWNCLOCK(r=0.00),Fresh calm
+robust,1635,HOLD(r=0.21) STALE_OBSERVATION,Stale 600 ms
+robust,2602,EMERGENCY_SLO,SLO miss
+robust,2602,EMERGENCY_BUDGET,Budget burn

@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AMS 560 · Robust GPU Energy Control under Stale Telemetry</title>
+<link rel="stylesheet" href="style.css">
+<script src="vendor/plotly.min.js"></script>
+</head>
+<body>
+<aside class="side">
+  <div class="brand">
+    <div class="brand-mark">⚡</div>
+    <div>
+      <div class="brand-title">Stale-Telemetry DVFS</div>
+      <div class="brand-sub">AMS 560 · Group 10</div>
+    </div>
+  </div>
+  <nav id="nav">
+    <a href="#overview" data-page="overview">Overview</a>
+    <a href="#results" data-page="results">Results</a>
+    <a href="#explorer" data-page="explorer">Run explorer</a>
+    <a href="#ablation" data-page="ablation">Ablation</a>
+    <a href="#testbed" data-page="testbed">Testbed</a>
+    <a href="#simulation" data-page="simulation">Simulation</a>
+    <a href="#figures" data-page="figures">Report figures</a>
+    <div class="nav-sep"></div>
+    <a href="#team" data-page="team">Team &amp; code guide</a>
+  </nav>
+  <div class="side-foot" id="side-foot"></div>
+</aside>
+
+<main id="main">
+  <!-- ───────────── Overview ───────────── -->
+  <section class="page" id="page-overview">
+    <header class="page-head">
+      <p class="eyebrow">Results of <span class="attempt-name"></span></p>
+      <h1>Does knowing how old your telemetry is make GPU energy control safer?</h1>
+      <p class="lede">A controller picks the GPU clock every second to save energy while keeping
+        LLM request latency under an SLO. It only sees telemetry that is <em>d</em> ms old. We
+        compare a reactive controller (<b>naive</b>) against one that knows the telemetry age, forecasts over it
+        and ignores lagging latency signals (<b>robust</b>), on a real RTX 5060 Laptop GPU.</p>
+    </header>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Burst-phase SLO misses vs telemetry delay</h3>
+        <p class="muted">sharp_burst workload: 4× arrivals for 20 s, starting 40 s after warm-up. The budget is 5 %.</p>
+        <div id="ov-miss" class="plot"></div>
+      </div>
+      <div class="card">
+        <h3>Energy per output token vs telemetry delay</h3>
+        <p class="muted">sharp_burst workload. Lower is better. The dashed line is static_high at 2122 MHz.</p>
+        <div id="ov-energy" class="plot"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Conclusions</h3>
+      <div id="conclusions" class="concl"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Experiment setup</h3>
+        <table class="kv" id="setup"></table>
+      </div>
+      <div class="card">
+        <h3>How one run works</h3>
+        <ol class="steps">
+          <li><b>Load generator</b> sends Poisson requests: steady, ramp or a 4× sharp burst.</li>
+          <li><b>LLM worker</b> serves them in batches of 16 (Qwen2.5-0.5B, long-context prompts).</li>
+          <li><b>Telemetry</b> (power, clock, queue, P95, error-budget burn, arrival rate) goes through a
+            <b>DelayBuffer</b>, so the controller sees data that is <em>d</em> ms old.</li>
+          <li><b>Controller</b> picks one of 5 clocks (180 to 2122 MHz) every 1 s. <code>nvidia-smi</code> locks it.</li>
+          <li><b>Metrics</b> integrate NVML power into joules and record every request's latency against the 5 s SLO.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────── Results ───────────── -->
+  <section class="page" id="page-results">
+    <header class="page-head">
+      <p class="eyebrow">Primary comparison</p>
+      <h1>naive vs robust across every condition</h1>
+      <p class="lede">Each bar is one 120 s GPU run (seed 42). Pick a workload and a metric.</p>
+    </header>
+    <div class="controls">
+      <div class="seg" id="res-workload"></div>
+      <select id="res-metric"></select>
+      <label class="chk"><input type="checkbox" id="res-ablation"> show ablation controllers</label>
+    </div>
+    <div class="card"><div id="res-bars" class="plot tall"></div><p class="muted" id="res-note"></p></div>
+    <div class="card">
+      <h3>Paired difference (robust − naive)</h3>
+      <div class="table-wrap"><table class="data" id="res-paired"></table></div>
+    </div>
+    <div class="card">
+      <h3>All runs</h3>
+      <p class="muted">Click a column header to sort. Click a row to open it in the run explorer.</p>
+      <div class="table-wrap"><table class="data click" id="res-all"></table></div>
+    </div>
+  </section>
+
+  <!-- ───────────── Explorer ───────────── -->
+  <section class="page" id="page-explorer">
+    <header class="page-head">
+      <p class="eyebrow">Inside a run</p>
+      <h1>Run explorer</h1>
+      <p class="lede">See what each controller saw (the delayed view) and what it did, second by
+        second. Shaded bands mark the burst and recovery phases.</p>
+    </header>
+    <div class="controls">
+      <div class="seg" id="ex-workload"></div>
+      <div class="seg" id="ex-delay"></div>
+      <div class="chips" id="ex-ctrls"></div>
+    </div>
+    <div class="card"><div id="ex-plot" class="plot xtall"></div></div>
+    <div class="grid2">
+      <div class="card">
+        <h3>Run summary</h3>
+        <div class="table-wrap"><table class="data" id="ex-summary"></table></div>
+      </div>
+      <div class="card">
+        <h3>Controller decisions</h3>
+        <p class="muted">How often each rule fired: one decision per second.</p>
+        <div id="ex-reasons" class="plot short"></div>
+      </div>
+    </div>
+    <div class="card explain">
+      <h3>How to read it</h3>
+      <ul>
+        <li><b>Arrival rate</b>: the solid line is the true 10 s rate. The dotted line is what the controller saw (delayed).</li>
+        <li><b>Queue</b>: solid is true, dotted is observed. At 2500 ms delay the controller sees a queue that is 2.5 s old.</li>
+        <li><b>Clock</b>: the clock each controller chose. Naive often stays at 2122 MHz after the burst
+          because the 60 s P95 window still remembers it. Robust drops back when there is no backlog.</li>
+        <li><b>Latency</b>: one dot per request, plotted at its arrival time. Points above the red SLO line are misses.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ───────────── Ablation ───────────── -->
+  <section class="page" id="page-ablation">
+    <header class="page-head">
+      <p class="eyebrow">Which mechanism does the work?</p>
+      <h1>Ablation on the sharp burst</h1>
+      <p class="lede">We turn off one part of the robust controller at a time and rerun the same burst at every delay.</p>
+    </header>
+    <div class="ladder" id="ab-ladder"></div>
+    <div class="grid2">
+      <div class="card"><h3>Burst-phase miss rate</h3><div id="ab-miss" class="plot"></div></div>
+      <div class="card"><h3>Energy per token</h3><div id="ab-energy" class="plot"></div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Clock changes per run</h3><div id="ab-chg" class="plot"></div></div>
+      <div class="card"><h3>Share of time at 2122 MHz</h3><div id="ab-top" class="plot"></div></div>
+    </div>
+    <div class="card explain" id="ab-text"></div>
+  </section>
+
+  <!-- ───────────── Testbed ───────────── -->
+  <section class="page" id="page-testbed">
+    <header class="page-head">
+      <p class="eyebrow">Before the controllers run</p>
+      <h1>Testbed characterisation</h1>
+      <p class="lede">Each fixed clock is swept on the same burst workload, and capacity is measured in the real serving
+        stack. These measurements set the base rate, the SLO and the capacity floor.</p>
+    </header>
+    <div class="grid2">
+      <div class="card"><h3>Fixed-clock sweep: energy per token</h3><div id="tb-j" class="plot"></div></div>
+      <div class="card"><h3>Fixed-clock sweep: P95 latency</h3><div id="tb-p95" class="plot"></div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Measured capacity per clock</h3><div id="tb-cap" class="plot"></div></div>
+      <div class="card"><h3>Probe and calibration</h3><table class="kv" id="tb-kv"></table>
+        <p class="muted" style="margin-top:12px">180 MHz cannot keep up (P95 of about 128 s), so it is only a fallback clock.
+          667 MHz has the lowest J/token but misses the SLO in a burst. That is the trade-off a controller has to manage.</p></div>
+    </div>
+  </section>
+
+  <!-- ───────────── Simulation ───────────── -->
+  <section class="page" id="page-simulation">
+    <header class="page-head">
+      <p class="eyebrow">Deliverable D10</p>
+      <h1>Trace-driven simulation and scale-out</h1>
+      <p class="lede"><code>serving_sim.py</code> replays the serving stack with the measured batch times and power
+        and delays every controller input. Each point is the mean of 20 paired seeds. Set
+        <b>workers = 8</b> to see a fleet that shares one clock policy.</p>
+    </header>
+    <div class="controls">
+      <div class="seg" id="sim-workers"></div>
+      <div class="seg" id="sim-workload"></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Miss rate vs delay</h3><div id="sim-miss" class="plot"></div></div>
+      <div class="card"><h3>Energy per token vs delay</h3><div id="sim-energy" class="plot"></div></div>
+    </div>
+    <div class="card">
+      <h3>robust vs naive, paired over 20 seeds</h3>
+      <div class="table-wrap"><table class="data" id="sim-paired"></table></div>
+      <p class="muted">Simulator and hardware agree on direction. On one GPU, robust's advantage in misses grows with delay.
+        In the fleet, robust mainly saves energy (8–13 %) with a miss rate close to naive's.</p>
+    </div>
+  </section>
+
+  <!-- ───────────── Figures ───────────── -->
+  <section class="page" id="page-figures">
+    <header class="page-head">
+      <p class="eyebrow">analyze_results.py output</p>
+      <h1>Report figures</h1>
+      <p class="lede">The static figures that go into the written report. Click one to enlarge it.</p>
+    </header>
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <!-- ───────────── Team ───────────── -->
+  <section class="page" id="page-team">
+    <header class="page-head">
+      <p class="eyebrow">Who built what, and how to explain it</p>
+      <h1>Team &amp; code guide</h1>
+      <p class="lede">Each member's part, every file in the repository and what it does, and a suggested
+        presentation flow. Use it to study the code before presenting.</p>
+    </header>
+    <div class="team" id="team"></div>
+    <div class="card">
+      <h3>Data flow of one experiment run</h3>
+      <div id="flow" class="flow"></div>
+    </div>
+    <div class="card">
+      <h3>File guide</h3>
+      <div class="controls"><input type="search" id="file-q" placeholder="Search files, concepts or owners…"><div class="seg" id="file-layer"></div></div>
+      <div id="files"></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Suggested presentation flow (about 12 min)</h3><ol class="steps" id="talk"></ol></div>
+      <div class="card"><h3>Glossary</h3><dl class="gloss" id="gloss"></dl></div>
+    </div>
+    <div class="card"><h3>Likely questions and short answers</h3><div id="qa" class="qa"></div></div>
+  </section>
+</main>
+
+<div class="lightbox" id="lightbox"><img alt=""></div>
+
+<script src="team.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,21 +1,29 @@
-from typing import List
+"""
+controllers/static.py
+Static frequency controller – always requests the same clock.
 
-from .base import BaseController, ControllerState
+Used for two baselines:
+  static_high  – locks the highest supported clock (maximum performance).
+  static_low   – locks a low but feasible clock (maximum power savings).
+"""
+
+from __future__ import annotations
+
+from controllers.base import BaseController, ControllerState
 
 
 class StaticController(BaseController):
-    """Always holds one clock. target_mhz <= 0 means the highest clock."""
+    """
+    Policy: always return the index closest to ``target_mhz``.
+    Once locked, the clock never changes.
+    """
 
-    def __init__(self, clocks: List[int], target_mhz: int = 0):
+    def __init__(self, clocks, target_mhz: int):
         super().__init__(clocks)
-        self._target_idx = self.find_index(target_mhz) if target_mhz > 0 else len(self.clocks) - 1
-
-    @property
-    def target_mhz(self) -> int:
-        return self.clocks[self._target_idx]
+        self.target_mhz = target_mhz
+        self._target_idx = self.find_index(target_mhz)
 
     def _policy(self, state: ControllerState, current_idx: int) -> int:
-        self.last_reason = f"STATIC({self.target_mhz}MHz)"
         return self._target_idx
 
     @property

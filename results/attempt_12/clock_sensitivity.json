@@ -1,0 +1,136 @@
+{
+  "rule": "sensitivity >= 1.5, top-clock batch time <= 8.0 s, highest sensitivity wins; base_rate = 0.3 x top-clock capacity",
+  "clocks": [
+    180,
+    1147,
+    2122
+  ],
+  "prompts_file": "prompts/long_context.jsonl",
+  "candidates": [
+    {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 4,
+      "prompt_tokens": 1267,
+      "new_tokens": 24,
+      "per_clock": {
+        "180": {
+          "batch_time_s": 6.776266300003044,
+          "power_w": 11.137247368421052,
+          "util_pct": 99.47631578947369,
+          "clock_mhz": 180,
+          "energy_j": 75.46895401742917
+        },
+        "1147": {
+          "batch_time_s": 0.9906383999914397,
+          "power_w": 24.59052727272727,
+          "util_pct": 90.61818181818182,
+          "clock_mhz": 1140,
+          "energy_j": 24.360320592400406
+        },
+        "2122": {
+          "batch_time_s": 0.7778701000206638,
+          "power_w": 36.21020930232558,
+          "util_pct": 67.53488372093024,
+          "clock_mhz": 2089.232558139535,
+          "energy_j": 28.16683913176917
+        }
+      },
+      "sensitivity": 8.711308353185236,
+      "service_top_s": 0.7778701000206638
+    },
+    {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 8,
+      "prompt_tokens": 1267,
+      "new_tokens": 32,
+      "per_clock": {
+        "180": {
+          "batch_time_s": 13.33519419998629,
+          "power_w": 11.540692513368985,
+          "util_pct": 99.55882352941177,
+          "clock_mhz": 179.79679144385025,
+          "energy_j": 153.8973758681033
+        },
+        "1147": {
+          "batch_time_s": 1.8637085999944247,
+          "power_w": 27.68866346153846,
+          "util_pct": 94.75961538461539,
+          "clock_mhz": 1140,
+          "energy_j": 51.603600215620624
+        },
+        "2122": {
+          "batch_time_s": 1.3169469999847934,
+          "power_w": 44.04,
+          "util_pct": 76.34567901234568,
+          "clock_mhz": 2093.296296296296,
+          "energy_j": 57.9983458793303
+        }
+      },
+      "sensitivity": 10.125839688415912,
+      "service_top_s": 1.3169469999847934
+    },
+    {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 16,
+      "prompt_tokens": 1277,
+      "new_tokens": 32,
+      "per_clock": {
+        "180": {
+          "batch_time_s": 23.90433779999148,
+          "power_w": 11.804199406968124,
+          "util_pct": 99.78947368421052,
+          "clock_mhz": 179.88732394366198,
+          "energy_j": 282.1715700826251
+        },
+        "1147": {
+          "batch_time_s": 3.2388093000045046,
+          "power_w": 30.791688524590164,
+          "util_pct": 96.55191256830601,
+          "clock_mhz": 1140,
+          "energy_j": 99.7284071562846
+        },
+        "2122": {
+          "batch_time_s": 2.0050701999862213,
+          "power_w": 55.11605309734513,
+          "util_pct": 92.84070796460178,
+          "clock_mhz": 2096.1592920353983,
+          "energy_j": 110.51155560634498
+        }
+      },
+      "sensitivity": 11.921945575848541,
+      "service_top_s": 2.0050701999862213
+    }
+  ],
+  "chosen": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "batch_size": 16,
+    "prompt_tokens": 1277,
+    "new_tokens": 32,
+    "per_clock": {
+      "180": {
+        "batch_time_s": 23.90433779999148,
+        "power_w": 11.804199406968124,
+        "util_pct": 99.78947368421052,
+        "clock_mhz": 179.88732394366198,
+        "energy_j": 282.1715700826251
+      },
+      "1147": {
+        "batch_time_s": 3.2388093000045046,
+        "power_w": 30.791688524590164,
+        "util_pct": 96.55191256830601,
+        "clock_mhz": 1140,
+        "energy_j": 99.7284071562846
+      },
+      "2122": {
+        "batch_time_s": 2.0050701999862213,
+        "power_w": 55.11605309734513,
+        "util_pct": 92.84070796460178,
+        "clock_mhz": 2096.1592920353983,
+        "energy_j": 110.51155560634498
+      }
+    },
+    "sensitivity": 11.921945575848541,
+    "service_top_s": 2.0050701999862213,
+    "base_rate": 2.35
+  }
+}

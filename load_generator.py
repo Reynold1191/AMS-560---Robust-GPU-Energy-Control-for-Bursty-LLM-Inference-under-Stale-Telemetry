@@ -1,148 +1,255 @@
 """
-load_generator.py -- Member 4 (Load Generation)
+load_generator.py
+Background thread that creates Request objects and pushes them to the
+RequestQueue at a configurable arrival rate.
 
-Daemon thread that creates LLM inference requests with Poisson arrivals and
-pushes them into the shared RequestQueue.
-
-Workload profiles (selected by `workload`):
-    steady       constant rate = base_arrival_rate
-    sharp_burst  base rate, x burst_multiplier inside
-                 [burst_start_s, burst_start_s + burst_duration_s]
-    ramp         linear increase from base_arrival_rate to ramp_end_rate
-                 over duration_s (clamped at ramp_end_rate)
-
-Depends on: config.py, request_queue.py (Member 1).
+Workload profiles
+-----------------
+  steady     – Poisson arrivals at a constant rate.
+  ramp       – Linearly increasing arrival rate from base → base x ramp_end_multiplier.
+  sharp_burst– Sudden spike (burst_multiplier × base rate) for a fixed window,
+               followed by a return to the base rate.
+  trace      – Replay a pre-recorded inter-arrival sequence.
 """
+
+from __future__ import annotations
 
 import json
 import logging
-import os
+import math
 import random
-import statistics
 import threading
 import time
+from pathlib import Path
 from typing import List, Optional
 
-from request_queue import Request
+from request_queue import Request, RequestQueue
 
-log = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Prompt loader
+# ---------------------------------------------------------------------------
+
+def load_prompts(path: str) -> List[dict]:
+    """
+    Load prompts from a JSONL file.
+    Each line: {"prompt": "...", "max_new_tokens": N}
+    """
+    records = []
+    p = Path(path)
+    if not p.exists():
+        logger.warning("Prompts file not found: %s – using fallback prompts", path)
+        return _FALLBACK_PROMPTS
+
+    with p.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                records.append(json.loads(line))
+    if not records:
+        return _FALLBACK_PROMPTS
+    logger.info("Loaded %d prompts from %s", len(records), path)
+    return records
+
 
 _FALLBACK_PROMPTS = [
-    {"prompt": "Explain what GPU dynamic voltage and frequency scaling (DVFS) is.", "max_new_tokens": 64},
-    {"prompt": "Why does LLM inference latency depend on GPU clock frequency?", "max_new_tokens": 96},
-    {"prompt": "List three ways cloud providers reduce energy use in data centers.", "max_new_tokens": 128},
-    {"prompt": "What is a latency SLO and why do services track an error budget?", "max_new_tokens": 160},
-    {"prompt": "Summarize the trade-off between energy efficiency and tail latency.", "max_new_tokens": 200},
+    {"prompt": "Explain the concept of energy-efficient computing in two sentences.", "max_new_tokens": 64},
+    {"prompt": "What is GPU frequency scaling and why does it matter for AI workloads?", "max_new_tokens": 96},
+    {"prompt": "Summarise the main trade-off between GPU power consumption and inference latency.", "max_new_tokens": 80},
+    {"prompt": "What is a service-level objective in the context of cloud serving systems?", "max_new_tokens": 72},
+    {"prompt": "Describe the impact of bursty traffic on a GPU inference server.", "max_new_tokens": 96},
 ]
 
 
 # ---------------------------------------------------------------------------
-# Pure helpers (shared with scale_simulator.py so both use identical profiles)
+# Arrival-rate schedule helpers
 # ---------------------------------------------------------------------------
 
-def workload_rate(workload: str, elapsed_s: float, base_rate: float,
-                  burst_multiplier: float, burst_start_s: float,
-                  burst_duration_s: float, ramp_end_rate: float,
-                  duration_s: float) -> float:
-    """Arrival rate (requests/s) at `elapsed_s` seconds into the run."""
+def _poisson_sleep(rate: float, rng: random.Random) -> float:
+    """Return an exponentially distributed inter-arrival time."""
+    if rate <= 0:
+        return 1.0
+    return rng.expovariate(rate)
+
+
+def _current_rate(
+    elapsed: float,
+    workload: str,
+    base_rate: float,
+    burst_multiplier: float,
+    burst_start: float,
+    burst_end: float,
+    ramp_end_rate: float,
+    duration: float,
+) -> float:
+    """Return the instantaneous target arrival rate at time ``elapsed``."""
     if workload == "steady":
         return base_rate
+
+    if workload == "ramp":
+        frac = min(elapsed / duration, 1.0)
+        return base_rate + frac * (ramp_end_rate - base_rate)
+
     if workload == "sharp_burst":
-        if burst_start_s <= elapsed_s <= burst_start_s + burst_duration_s:
+        if burst_start <= elapsed < burst_end:
             return base_rate * burst_multiplier
         return base_rate
-    if workload == "ramp":
-        if duration_s <= 0:
-            return ramp_end_rate
-        rate = base_rate + (elapsed_s / duration_s) * (ramp_end_rate - base_rate)
-        # clamp so the rate never overshoots ramp_end_rate (works for up- or down-ramps)
-        lo, hi = sorted((base_rate, ramp_end_rate))
-        return min(max(rate, lo), hi)
-    raise ValueError(f"Unknown workload '{workload}' (expected steady, ramp, sharp_burst)")
 
-
-def workload_phase(workload: str, elapsed_s: float, warmup_s: float,
-                   burst_start_s: float, burst_duration_s: float) -> str:
-    """Phase tag for a request created at `elapsed_s`."""
-    if elapsed_s < warmup_s:
-        return "warmup"
-    if workload == "sharp_burst" and burst_start_s <= elapsed_s <= burst_start_s + burst_duration_s:
-        return "burst"
-    return "steady"
-
-
-def load_prompts(path: Optional[str]) -> List[dict]:
-    """Read a JSONL prompt file; fall back to a built-in list if missing/empty."""
-    if not path or not os.path.exists(path):
-        log.warning("Prompt file %s not found; using %d fallback prompts", path, len(_FALLBACK_PROMPTS))
-        return list(_FALLBACK_PROMPTS)
-    prompts = []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                prompts.append(json.loads(line))
-    if not prompts:
-        log.warning("Prompt file %s is empty; using fallback prompts", path)
-        return list(_FALLBACK_PROMPTS)
-    return prompts
+    # Default
+    return base_rate
 
 
 # ---------------------------------------------------------------------------
-# LoadGenerator thread
+# Load generator thread
 # ---------------------------------------------------------------------------
 
-class LoadGenerator(threading.Thread):
-    """Generates Poisson arrivals according to a workload profile."""
+class LoadGenerator:
+    """
+    Daemon thread that generates requests according to a workload profile.
 
-    def __init__(self, queue, config, workload: str = "sharp_burst", seed: int = 42, prompts=None):
-        super().__init__(name="LoadGenerator", daemon=True)
-        # run_experiment.py calls LoadGenerator(queue, config, prompts).
-        if isinstance(workload, (list, tuple)):
-            prompts = list(workload)
-            workload = config.workload
-            seed = config.seed
-        if workload not in ("steady", "ramp", "sharp_burst"):
-            raise ValueError(f"Unknown workload '{workload}'")
-        self.queue = queue
+    Parameters
+    ----------
+    request_queue  : Shared RequestQueue consumed by LLMWorker.
+    config         : ExperimentConfig instance.
+    prompts        : List of prompt dicts (loaded from prompts.jsonl).
+    """
+
+    def __init__(self, request_queue: RequestQueue, config, prompts: List[dict]):
+        self.request_queue = request_queue
         self.config = config
-        self.workload = workload
-        self.seed = seed
-        self.rng = random.Random(seed)
-        self.prompts = list(prompts) if prompts else self._load_prompts(config.prompts_file)
+        self.prompts = prompts
+
         self._stop_event = threading.Event()
-        self._phase_lock = threading.Lock()
-        self._phase_override: Optional[str] = None
-        self._request_id = 0
-        self._start_t: Optional[float] = None
+        self._rng = random.Random(config.seed)
+        self._request_counter = 0
+        self._phase = "warmup"
+        self._origin: Optional[float] = None
+        self._lock = threading.Lock()
+
+        # Inter-arrival times log (for computing arrival CV)
         self.inter_arrivals: List[float] = []
-        self._prev_arrival: Optional[float] = None
 
-    # -- helpers ------------------------------------------------------------
-    def _load_prompts(self, path) -> List[dict]:
-        return load_prompts(path)
+        self._thread = threading.Thread(
+            target=self._run, name="load-generator", daemon=True
+        )
 
-    def _current_rate(self, elapsed_s: float) -> float:
-        c = self.config
-        return workload_rate(self.workload, elapsed_s, c.base_arrival_rate,
-                             c.burst_multiplier, c.burst_start_s, c.burst_duration_s,
-                             c.ramp_end_rate, c.duration_s)
+    # ------------------------------------------------------------------ #
+    # Public API                                                            #
+    # ------------------------------------------------------------------ #
 
-    def _phase_tag(self, elapsed_s: float) -> str:
-        with self._phase_lock:
-            if self._phase_override is not None:
-                return self._phase_override
-        c = self.config
-        return workload_phase(self.workload, elapsed_s, c.warmup_s,
-                              c.burst_start_s, c.burst_duration_s)
+    def start(self) -> None:
+        self._thread.start()
+        logger.info("LoadGenerator started (workload=%s, base_rate=%.2f rps)",
+                    self.config.workload, self.config.base_arrival_rate)
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self._thread.join(timeout=5.0)
+        logger.info("LoadGenerator stopped (%d requests created)",
+                    self._request_counter)
 
     def set_phase(self, phase: str) -> None:
-        """Runner override. Without this call, phase comes from elapsed time."""
-        with self._phase_lock:
-            self._phase_override = phase
+        with self._lock:
+            self._phase = phase
+
+    # ------------------------------------------------------------------ #
+    # Thread body                                                           #
+    # ------------------------------------------------------------------ #
+
+    def set_origin(self, t: float) -> None:
+        """
+        Set the shared experiment origin (end of warm-up, monotonic time).
+        From then on the burst schedule and phase tags follow
+        observation.phase_at(), the same clock the control loop uses.
+        """
+        with self._lock:
+            self._origin = t
+
+    def _elapsed(self, now: float) -> Optional[float]:
+        with self._lock:
+            origin = self._origin
+        return None if origin is None else now - origin
+
+    def _max_rate(self) -> float:
+        from observation import ramp_end_rate
+        cfg = self.config
+        rates = [cfg.base_arrival_rate, cfg.base_arrival_rate * cfg.burst_multiplier]
+        if cfg.workload == "ramp":
+            rates.append(ramp_end_rate(cfg))
+        return max(rates)
+
+    def _next_arrival(self, prev: float) -> float:
+        """
+        Next scheduled arrival (monotonic time) after ``prev``: a
+        non-homogeneous Poisson process by thinning. Candidates come at the
+        peak rate and are kept with probability rate(t) / peak, so step
+        changes (burst) and ramps are exact and depend only on the seed.
+        """
+        from observation import arrival_rate_at
+        lam_max = self._max_rate()
+        t = prev
+        while True:
+            t += self._rng.expovariate(lam_max)
+            rate = arrival_rate_at(self._elapsed(t), self.config)
+            if self._rng.random() * lam_max <= rate:
+                return t
+
+    def _run(self) -> None:
+        """
+        Open-loop arrivals from a pre-drawn schedule.
+
+        attempt_7 drew each gap after the previous request was queued and
+        slept it off; while the worker held the GIL (HF decode is CPU-bound)
+        those sleeps overran, so a 9.4 req/s burst delivered ~7.4 req/s and
+        steady runs ~9 % fewer requests than planned. Now arrival times are
+        fixed in advance; a late wake-up enqueues every overdue request at
+        once, each stamped with its SCHEDULED arrival time, so queueing
+        latency is still counted from when the request should have arrived.
+        """
+        from observation import measurement_length_s, phase_at
+
+        cfg = self.config
+        prev_sched = time.monotonic()
+        next_t = self._next_arrival(prev_sched)
+
+        while not self._stop_event.is_set():
+            now = time.monotonic()
+            if next_t > now:
+                self._stop_event.wait(min(next_t - now, 0.05))
+                continue
+
+            elapsed = self._elapsed(next_t)
+            if elapsed is not None and elapsed >= measurement_length_s(cfg):
+                break
+            phase = phase_at(elapsed, cfg) if elapsed is not None else "warmup"
+
+            self.inter_arrivals.append(next_t - prev_sched)
+            prev_sched = next_t
+
+            p = self.prompts[self._request_counter % len(self.prompts)]
+            req = Request(
+                request_id=self._request_counter,
+                prompt=p["prompt"],
+                max_new_tokens=int(p.get("max_new_tokens", 64)),
+                arrival_t=next_t,
+                phase=phase,
+            )
+            self._request_counter += 1
+            self.request_queue.put(req)
+            next_t = self._next_arrival(next_t)
+
+    # ------------------------------------------------------------------ #
+    # Diagnostics                                                           #
+    # ------------------------------------------------------------------ #
 
     def arrival_cv(self, last_n: int = 30) -> float:
-        """Coefficient of variation of recent inter-arrival times."""
+        """
+        Coefficient of variation of recent inter-arrival times.
+        High CV indicates bursty traffic.
+        """
+        import statistics
         iat = self.inter_arrivals[-last_n:] if self.inter_arrivals else []
         if len(iat) < 2:
             return 0.0
@@ -152,61 +259,18 @@ class LoadGenerator(threading.Thread):
         return statistics.stdev(iat) / mu
 
     def recent_arrival_rate(self, window_s: float = 10.0) -> float:
-        """Requests per second over the most recent inter-arrival window."""
+        """
+        Estimate requests-per-second in the most recent window.
+        Uses the last N inter-arrival times whose sum ≤ window_s.
+        """
         iat = self.inter_arrivals
         if not iat:
             return 0.0
         acc = 0.0
         count = 0
-        for gap in reversed(iat):
-            acc += gap
+        for v in reversed(iat):
+            acc += v
             count += 1
             if acc >= window_s:
                 break
         return count / acc if acc > 0 else 0.0
-
-    # -- thread body ----------------------------------------------------------
-    def run(self):
-        self._start_t = time.monotonic()
-        while not self._stop_event.is_set():
-            elapsed = time.monotonic() - self._start_t
-            if elapsed >= self.config.duration_s:
-                break
-
-            rate = self._current_rate(elapsed)
-            sleep_s = self.rng.expovariate(rate) if rate > 0 else 1.0
-
-            if self._stop_event.wait(timeout=sleep_s):
-                break  # stop() was called while waiting
-
-            elapsed = time.monotonic() - self._start_t
-            if elapsed >= self.config.duration_s:
-                break
-
-            idx = self.rng.randrange(len(self.prompts))
-            p = self.prompts[idx]
-            now = time.monotonic()
-            if self._prev_arrival is not None:
-                self.inter_arrivals.append(now - self._prev_arrival)
-            self._prev_arrival = now
-            req = Request(
-                request_id=self._request_id,
-                prompt=p["prompt"],
-                max_new_tokens=int(p.get("max_new_tokens", 64)),
-                arrival_t=now,
-                phase=self._phase_tag(elapsed),
-                seed_idx=idx,
-            )
-            self.queue.put(req)
-            self._request_id += 1
-
-        log.info("LoadGenerator(%s) finished: %d requests", self.workload, self._request_id)
-
-    def stop(self):
-        self._stop_event.set()
-        if self.is_alive() and threading.current_thread() is not self:
-            self.join(timeout=5.0)
-
-    @property
-    def n_generated(self) -> int:
-        return self._request_id

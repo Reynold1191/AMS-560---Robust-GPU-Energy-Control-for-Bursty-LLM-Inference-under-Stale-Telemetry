@@ -1,0 +1,2 @@
+joules_from_samples 100W for 2s = 200.0 J
+summary_stats p95 of 1..10 = 10.0, mean = 5.5
