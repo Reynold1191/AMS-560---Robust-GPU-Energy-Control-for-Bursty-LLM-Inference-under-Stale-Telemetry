@@ -37,7 +37,7 @@ traffic burst from 40 s to 60 s), with telemetry that is **2.5 s old**.
 ### What the machine does
 
 <p align="center">
-  <img src="docs/img/machine_pipeline.gif" width="820" alt="Prompts become requests, wait in a queue, run in batches of 16 on the GPU and return as answers, while the controller sets the clock from 2.5 s old telemetry">
+  <img src="docs/img/machine_pipeline.gif" width="100%" alt="Prompts become requests, wait in a queue, run in batches of 16 on the GPU and return as answers, while the controller sets the clock from 2.5 s old telemetry">
 </p>
 
 1. **A user sends a prompt.** Each request is a long-context prompt (a service
@@ -59,7 +59,7 @@ maximum clock long after the queue is empty.
 ### The same thing as a kitchen
 
 <p align="center">
-  <img src="docs/img/kitchen_rush.gif" width="820" alt="Two kitchen managers during a lunch rush, both reading a status board that is 2.5 s old">
+  <img src="docs/img/kitchen_rush.gif" width="100%" alt="Two kitchen managers during a lunch rush, both reading a status board that is 2.5 s old">
 </p>
 
 Orders are requests, the ticket rail is the queue, the stove is the GPU clock,
