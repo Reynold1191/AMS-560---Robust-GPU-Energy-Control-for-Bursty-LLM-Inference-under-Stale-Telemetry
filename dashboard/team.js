@@ -281,8 +281,6 @@ window.TEAM = {
       what: ["Pooled tables per delay and workload, run-level tests (sign test, Wilcoxon), per-replicate results, ablation and the costs."], ideas: ["Each (attempt, seed) is one paired replicate; the three sessions reuse seeds 41–43.", "Supersedes CONCLUSIONS_attempt_13_14.md (first two repeats)."], present: "Source for the results slide and the significance claims." },
     { path: "reports/CONCLUSIONS_attempt_12.md", layer: "docs", owner: 5, one: "What attempt_12 (one seed) shows and what it does not.",
       what: ["Tables, conclusions graded as concluded / trend / not shown, and the simulator cross-check."], ideas: [], present: "Source for the results and conclusion slides." },
-    { path: "reports/TEAM_PLAN.md", layer: "docs", owner: null, one: "Original task split and interface contracts.",
-      what: ["Who owns which file, merge order and the acceptance tests each member had to pass."], ideas: [], present: "Shows how the work was divided." },
     { path: "results/attempt_12/", layer: "docs", owner: 5, one: "Raw data of the single-seed GPU run (35 runs).",
       what: ["Per-run control/telemetry/request CSVs, run_summary.csv, sweep, capacity, simulator output, figures."], ideas: [], present: "History: the first run of robust v2." },
     { path: "results/attempt_13/, attempt_14/, attempt_15/", layer: "docs", owner: 5, one: "Raw data of the three 3-seed repeats (105 runs each).",

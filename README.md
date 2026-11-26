@@ -230,8 +230,6 @@ ams560_gpu_control/
 |   |-- CONCLUSIONS_attempt_13_15.md  # Final conclusions: 3 sessions x 3 seeds, 315 runs
 |   |-- CONCLUSIONS_attempt_13_14.md  # Earlier 6-replicate version (superseded)
 |   |-- CONCLUSIONS_attempt_12.md     # First single-seed GPU run
-|   |-- MIDTERM_REPORT.md      # Midterm write-up
-|   |-- TEAM_PLAN.md           # Original team plan and task split
 |   \-- midterm/               # Midterm and proposal PDFs, figures, generator script
 \-- results/attempt_12..15/    # GPU runs: per-run CSVs, summaries, figures
 ```
