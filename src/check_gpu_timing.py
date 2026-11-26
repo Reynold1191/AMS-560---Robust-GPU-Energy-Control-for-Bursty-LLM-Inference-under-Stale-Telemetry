@@ -15,7 +15,7 @@ Clocks that are capped (power/thermal limit) or fail are reported but left out
 of the usable experiment clocks.
 
 Run from an Administrator prompt (clock locking needs admin):
-    python check_gpu_timing.py
+    python src/check_gpu_timing.py
 
 Without admin rights only the read-only telemetry checks run.
 The GPU clock is reset to the driver default (nvidia-smi -rgc) on exit,
@@ -42,6 +42,7 @@ import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)  # repository root: results/, prompts/
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
@@ -50,8 +51,8 @@ import pynvml
 from config import DELAY_VALUES_MS, VERIFIED_CLOCKS_MHZ
 from gpu_clock import select_experiment_clocks, supported_graphics_clocks
 
-OUT_DIR = os.path.join(HERE, "results", "gpu_check")
-SAVED_TIMING = os.path.join(HERE, "results", "timing_characterisation.json")
+OUT_DIR = os.path.join(ROOT, "results", "gpu_check")
+SAVED_TIMING = os.path.join(ROOT, "results", "timing_characterisation.json")
 POLL_S = 0.01
 SETTLE_HOLD_MS = 80.0
 PROPOSAL_LEVELS_MS = [0, 500, 1250, 2500]

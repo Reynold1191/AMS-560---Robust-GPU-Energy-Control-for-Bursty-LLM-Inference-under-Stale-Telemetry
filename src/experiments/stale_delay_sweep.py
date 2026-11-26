@@ -9,10 +9,10 @@ its 300 ms stale-telemetry guard. --no-guard swaps in a guard-free robust
 controller; that run is a diagnostic and is labeled as such.
 
 Usage (from the project root):
-    python experiments/stale_delay_sweep.py
-    python experiments/stale_delay_sweep.py --no-guard
-    python experiments/stale_delay_sweep.py --service-model compute
-    python experiments/stale_delay_sweep.py --min-clock 1147
+    python src/experiments/stale_delay_sweep.py
+    python src/experiments/stale_delay_sweep.py --no-guard
+    python src/experiments/stale_delay_sweep.py --service-model compute
+    python src/experiments/stale_delay_sweep.py --min-clock 1147
 """
 
 import argparse
@@ -30,9 +30,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
+SRC = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(SRC)  # repository root: results/
+if SRC not in sys.path:
+    sys.path.insert(0, SRC)
 
 from config import DELAY_VALUES_MS, VERIFIED_CLOCKS_MHZ, ExperimentConfig
 from controllers import get_controller

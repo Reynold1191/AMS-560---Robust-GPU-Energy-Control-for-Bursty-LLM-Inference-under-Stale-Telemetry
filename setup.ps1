@@ -59,11 +59,11 @@ New-Item -ItemType Directory -Path "results" -Force | Out-Null
 # ── Step 6: Run unit tests ───────────────────────────────────────────────────
 Write-Host "`n[6] Running controller unit tests ..." -ForegroundColor Yellow
 python -m controllers.naive_slo
-python controllers\robust_delay_budget.py
+python src\controllers\robust_delay_budget.py
 
 Write-Host "`n================================================" -ForegroundColor Green
 Write-Host "Setup complete. Next steps:" -ForegroundColor Green
 Write-Host "  1. .\run_all.ps1 -QuickTest     # fast smoke test (5-10 min)"  -ForegroundColor White
 Write-Host "  2. .\run_all.ps1                # full experiment matrix" -ForegroundColor White
-Write-Host "  3. python analyze_results.py    # generate all figures" -ForegroundColor White
+Write-Host "  3. python src\analyze_results.py    # generate all figures" -ForegroundColor White
 Write-Host "================================================" -ForegroundColor Green

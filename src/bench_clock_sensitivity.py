@@ -21,7 +21,7 @@ Choice rule (fixed before looking at controller results):
                 fall behind sooner.
 
 Run from an Administrator terminal (clock locking):
-    python bench_clock_sensitivity.py --out results/attempt_6/clock_sensitivity.json
+    python src/bench_clock_sensitivity.py --out results/attempt_6/clock_sensitivity.json
 Exit code 1 if no candidate is usable.  The clock is reset on exit.
 """
 
@@ -38,6 +38,7 @@ import threading
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)  # repository root: results/, prompts/
 sys.path.insert(0, HERE)
 
 from config import VERIFIED_CLOCKS_MHZ  # noqa: E402
@@ -155,7 +156,7 @@ def main(argv=None) -> int:
     p.add_argument("--clocks", type=int, nargs="+",
                    default=[VERIFIED_CLOCKS_MHZ[0], VERIFIED_CLOCKS_MHZ[len(VERIFIED_CLOCKS_MHZ) // 2],
                             VERIFIED_CLOCKS_MHZ[-1]])
-    p.add_argument("--prompts-file", default=os.path.join(HERE, "prompts", "long_context.jsonl"))
+    p.add_argument("--prompts-file", default=os.path.join(ROOT, "prompts", "long_context.jsonl"))
     p.add_argument("--reps", type=int, default=3)
     p.add_argument("--max-service-s", type=float, default=8.0,
                    help="Reject setups whose top-clock batch time exceeds this")

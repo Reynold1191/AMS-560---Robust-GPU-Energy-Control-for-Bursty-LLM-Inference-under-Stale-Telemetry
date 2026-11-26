@@ -11,7 +11,7 @@ results/oracle_table.csv with columns:
   bucket, clock_mhz, p95_s, mean_power_w, feasible
 
 Usage:
-  python oracle_builder.py --slo-target 2.0
+  python src/oracle_builder.py --slo-target 2.0
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def build_oracle_table(
 ) -> None:
     if not os.path.exists(sweep_path):
         print(f"ERROR: sweep CSV not found: {sweep_path}")
-        print("Run  python run_experiment.py --sweep-clocks  first.")
+        print("Run  python src/run_experiment.py --sweep-clocks  first.")
         sys.exit(1)
 
     rows = []

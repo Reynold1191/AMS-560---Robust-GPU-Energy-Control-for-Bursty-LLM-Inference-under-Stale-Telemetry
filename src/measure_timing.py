@@ -6,7 +6,7 @@ Characterise the real software-visible timing on this GPU:
   (c) Observed actuation delay (time from clock command to clock reading under load)
 
 Run from an Administrator PowerShell:
-  python measure_timing.py
+  python src/measure_timing.py
 
 Outputs:
   results/timing_characterisation.json  (structured measurements)

@@ -153,7 +153,7 @@ def measure_lock_command_latency_ms(mhz: int, n_trials: int = 20) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Quick self-test (run directly: python gpu_clock.py)
+# Quick self-test (run directly: python src/gpu_clock.py)
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":

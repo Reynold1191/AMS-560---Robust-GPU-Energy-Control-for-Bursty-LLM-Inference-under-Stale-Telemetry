@@ -19,7 +19,7 @@ It also checks the testbed itself:
   * utilisation      - is the GPU busy enough that energy is not just idle power?
 
 Usage:
-  python calibrate_slo.py --results-dir results/attempt_4 --budget-ratio 0.05
+  python src/calibrate_slo.py --results-dir results/attempt_4 --budget-ratio 0.05
 Writes <results-dir>/slo_calibration.json.  Exit code 1 if a blocking check fails.
 """
 
@@ -163,7 +163,7 @@ def main(argv=None) -> int:
 
     runs_path = os.path.join(args.results_dir, "sweep_runs.csv")
     if not os.path.exists(runs_path):
-        print(f"ERROR: {runs_path} not found. Run: python run_experiment.py --sweep-clocks "
+        print(f"ERROR: {runs_path} not found. Run: python src/run_experiment.py --sweep-clocks "
               f"--results-dir {args.results_dir}")
         return 1
     result = calibrate(_read_csv(runs_path), args.results_dir, args.budget_ratio)

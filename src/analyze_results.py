@@ -13,7 +13,7 @@ Produces the figures required for the final report:
   Fig 8.  Ablation comparison (full / no-age / no-budget)
 
 Usage:
-  python analyze_results.py --results-dir results --slo-target 2.0
+  python src/analyze_results.py --results-dir results --slo-target 2.0
 
 All figures saved as PNG in the results directory.
 """

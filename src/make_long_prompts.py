@@ -15,8 +15,8 @@ tokenizer to target lengths of 768 / 1024 / 1280 prompt tokens. Answers are
 capped at 16 / 24 / 32 new tokens.
 
 Usage:
-    python make_long_prompts.py                       # writes prompts/long_context.jsonl
-    python make_long_prompts.py --model Qwen/Qwen2.5-1.5B-Instruct
+    python src/make_long_prompts.py                       # writes prompts/long_context.jsonl
+    python src/make_long_prompts.py --model Qwen/Qwen2.5-1.5B-Instruct
 """
 
 from __future__ import annotations
@@ -27,6 +27,7 @@ import os
 import random
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)  # repository root: results/, prompts/
 TARGET_TOKENS = [768, 1024, 1280]
 ANSWER_TOKENS = [16, 24, 32]
 
@@ -113,7 +114,7 @@ def build(tokenizer, n: int = 30, seed: int = 560) -> list:
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__.splitlines()[1])
     p.add_argument("--model", default="Qwen/Qwen2.5-0.5B-Instruct")
-    p.add_argument("--out", default=os.path.join(HERE, "prompts", "long_context.jsonl"))
+    p.add_argument("--out", default=os.path.join(ROOT, "prompts", "long_context.jsonl"))
     p.add_argument("--n", type=int, default=30)
     args = p.parse_args(argv)
     import hf_compat  # noqa: F401  (psutil DLL blocked on this laptop)

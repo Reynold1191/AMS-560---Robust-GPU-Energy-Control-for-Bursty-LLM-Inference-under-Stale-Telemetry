@@ -153,7 +153,7 @@ clock changes (7.8 vs 15.4 per run).
 * A 20-seed trace-driven simulator agrees in direction, and a simulated fleet
   of 8 GPUs saves **7-14 %** energy on steady and bursty traffic.
 * Full tables, p-values and per-replicate results:
-  [`CONCLUSIONS_attempt_13_15.md`](CONCLUSIONS_attempt_13_15.md) and the
+  [`reports/CONCLUSIONS_attempt_13_15.md`](reports/CONCLUSIONS_attempt_13_15.md) and the
   *3-seed replication* page of the dashboard (`dashboard/index.html`).
 
 ### Scope
@@ -175,7 +175,7 @@ sessions reuse seeds 41-43. Figures are regenerated with
 - Small enough for rapid experimentation while generating real CUDA load
 
 **Optional second model** (for external validity): `Qwen/Qwen2.5-1.5B-Instruct`
-- Switch via: `python run_experiment.py --model Qwen/Qwen2.5-1.5B-Instruct`
+- Switch via: `python src/run_experiment.py --model Qwen/Qwen2.5-1.5B-Instruct`
 - Keep model fixed within any experiment block so frequency is the controlled variable
 
 ---
@@ -184,43 +184,56 @@ sessions reuse seeds 41-43. Figures are regenerated with
 
 ```
 ams560_gpu_control/
-|-- config.py                  # Central experiment configuration
-|-- gpu_clock.py               # Clock enumeration & nvidia-smi control
-|-- telemetry.py               # NVML background sampler
-|-- delay_buffer.py            # Stale-telemetry injection buffer
-|-- slo_budget.py              # Rolling SLO error-budget tracker
-|-- request_queue.py           # Request dataclass + thread-safe queue
-|-- load_generator.py          # Workload generation (steady/ramp/burst)
-|-- llm_worker.py              # HuggingFace LLM inference worker thread
-|-- metrics.py                 # Energy (trapz), latency stats, CSV logging
-|-- controllers/
-|   |-- __init__.py            # Factory: get_controller(name, clocks, cfg)
-|   |-- base.py                # BaseController + ControllerState dataclass
-|   |-- static.py              # Static frequency (high / low baseline)
-|   |-- naive_slo.py           # Naive SLO-aware (no age, no budget) baseline
-|   \-- robust_delay_budget.py # Proposed robust controller + oracle mode
-|-- observation.py             # Delays every controller input, shared phase timeline
-|-- capacity_model.py          # Per-clock serving capacity (feasibility floor)
-|-- run_experiment.py          # Main CLI experiment runner
-|-- run_demo.py                # End-to-end pipeline (sweep -> calibration -> matrix -> figures)
-|-- check_gpu_timing.py        # Week-1 GPU checks and delay levels
-|-- measure_timing.py          # Characterise real telemetry/clock timing (D3)
-|-- bench_clock_sensitivity.py # Does the clock change service time? (model/batch choice)
-|-- calibrate_slo.py           # SLO and static-efficient clock from the sweep
-|-- oracle_builder.py          # Build oracle lookup table from sweep (D2 -> oracle)
-|-- serving_sim.py             # Trace-driven replay of the serving stack
-|-- scale_simulator.py         # Simulation grid, 1 and 8 workers (D10)
-|-- analyze_results.py         # Post-run analysis and report figures
-|-- make_long_prompts.py       # Builds prompts/long_context.jsonl
-|-- run_all.ps1                # Wrapper around run_demo.py
+|-- README.md
+|-- run_all.ps1                # Wrapper around src/run_demo.py
 |-- setup.ps1                  # One-time environment setup
+|-- run_tests.py               # GPU-free tests, then the stale-delay sweep figure
+|-- src/                       # All experiment code (run scripts from the repository root)
+|   |-- config.py              # Central experiment configuration
+|   |-- gpu_clock.py           # Clock enumeration & nvidia-smi control
+|   |-- telemetry.py           # NVML background sampler
+|   |-- delay_buffer.py        # Stale-telemetry injection buffer
+|   |-- observation.py         # Delays every controller input, shared phase timeline
+|   |-- slo_budget.py          # Rolling SLO error-budget tracker
+|   |-- request_queue.py       # Request dataclass + thread-safe queue
+|   |-- load_generator.py      # Workload generation (steady/ramp/burst)
+|   |-- llm_worker.py          # HuggingFace LLM inference worker thread
+|   |-- hf_compat.py           # transformers compatibility shims
+|   |-- metrics.py             # Energy (trapz), latency stats, CSV logging
+|   |-- controllers/
+|   |   |-- __init__.py        # Factory: get_controller(name, clocks, cfg)
+|   |   |-- base.py            # BaseController + ControllerState dataclass
+|   |   |-- static.py          # Static frequency (high / low baseline)
+|   |   |-- naive_slo.py       # Naive SLO-aware (no age, no budget) baseline
+|   |   \-- robust_delay_budget.py  # Proposed robust controller + oracle mode
+|   |-- run_experiment.py      # Main CLI experiment runner
+|   |-- run_demo.py            # End-to-end pipeline (sweep -> calibration -> matrix -> figures)
+|   |-- check_gpu_timing.py    # Week-1 GPU checks and delay levels
+|   |-- measure_timing.py      # Characterise real telemetry/clock timing (D3)
+|   |-- bench_clock_sensitivity.py  # Does the clock change service time? (model/batch choice)
+|   |-- capacity_model.py      # Per-clock serving capacity (feasibility floor)
+|   |-- calibrate_slo.py       # SLO and static-efficient clock from the sweep
+|   |-- oracle_builder.py      # Build oracle lookup table from sweep (D2 -> oracle)
+|   |-- serving_sim.py         # Trace-driven replay of the serving stack
+|   |-- scale_simulator.py     # Simulation grid, 1 and 8 workers (D10)
+|   |-- analyze_results.py     # Post-run analysis and report figures
+|   |-- make_long_prompts.py   # Builds prompts/long_context.jsonl
+|   \-- experiments/
+|       \-- stale_delay_sweep.py  # Midterm simulation of the stale-delay sweep
+|-- tests/                     # GPU-free tests (python run_tests.py)
 |-- prompts/
 |   |-- long_context.jsonl     # 30 long-context prompts (main workload)
 |   \-- prompts.jsonl          # Original short prompts
-|-- tests/                     # GPU-free tests (python run_tests.py)
 |-- dashboard/                 # Interactive results dashboard (python dashboard/serve.py)
-|-- CONCLUSIONS_attempt_12.md  # What the final GPU run shows
-\-- results/attempt_12/        # Final GPU run: per-run CSVs, summaries, figures
+|-- docs/                      # README figures, GIFs and the scripts that make them
+|-- reports/
+|   |-- CONCLUSIONS_attempt_13_15.md  # Final conclusions: 3 sessions x 3 seeds, 315 runs
+|   |-- CONCLUSIONS_attempt_13_14.md  # Earlier 6-replicate version (superseded)
+|   |-- CONCLUSIONS_attempt_12.md     # First single-seed GPU run
+|   |-- MIDTERM_REPORT.md      # Midterm write-up
+|   |-- TEAM_PLAN.md           # Original team plan and task split
+|   \-- midterm/               # Midterm and proposal PDFs, figures, generator script
+\-- results/attempt_12..15/    # GPU runs: per-run CSVs, summaries, figures
 ```
 
 ---
@@ -252,22 +265,22 @@ and runs controller unit tests.
 ### 2. End-to-end hardware run (Administrator PowerShell)
 
 ```powershell
-python run_demo.py --quick      # 1 seed, sharp_burst only (~1 h) -- run this first
-python run_demo.py --seeds 42   # 1 seed, all workloads (~2 h)
-python run_demo.py --primary-only   # proposal run: 24 primary conditions x 3 paired seeds (~3.5-4 h)
-python run_demo.py              # 3 paired seeds, all blocks (~4.5-5 h)
+python src/run_demo.py --quick      # 1 seed, sharp_burst only (~1 h) -- run this first
+python src/run_demo.py --seeds 42   # 1 seed, all workloads (~2 h)
+python src/run_demo.py --primary-only   # proposal run: 24 primary conditions x 3 paired seeds (~3.5-4 h)
+python src/run_demo.py              # 3 paired seeds, all blocks (~4.5-5 h)
 ```
 
 Pipeline: GPU timing check -> fixed-clock sweep (every verified clock, sharp
-burst) -> `calibrate_slo.py` (SLO = 1.5x worst P95 at the top clock, 5% budget;
+burst) -> `src/calibrate_slo.py` (SLO = 1.5x worst P95 at the top clock, 5% budget;
 stops if the clock barely changes latency) -> oracle table -> controller
 matrix (run order shuffled per seed) -> simulation -> figures. `.\run_all.ps1`
 is a thin wrapper (`-QuickTest`, `-Demo`). Reuse a finished sweep with
 `--sweep-from results\attempt_N`. Run several attempts back to back with
-`python run_demo.py --repeat-1seed 1 --repeat-3seed 1 --skip-gpu-check`.
+`python src/run_demo.py --repeat-1seed 1 --repeat-3seed 1 --skip-gpu-check`.
 
 What the controller sees: every input (NVML sample AND queue length, P95,
-budget burn, arrival stats) is delayed by `--delay-ms`; see `observation.py`.
+budget burn, arrival stats) is delayed by `--delay-ms`; see `src/observation.py`.
 Delay levels `[0, 500, 1250, 2500]` ms come from the measured NVML refresh
 (~500 ms) and clock/power settling (~1.25 s) in `results/gpu_check/`.
 
@@ -275,41 +288,41 @@ Delay levels `[0, 500, 1250, 2500]` ms come from the measured NVML refresh
 
 ```powershell
 # Robust controller, 500 ms delay, sharp burst
-python run_experiment.py --controller robust --delay-ms 500 --workload sharp_burst
+python src/run_experiment.py --controller robust --delay-ms 500 --workload sharp_burst
 
 # Naive SLO controller, 0 delay, steady workload
-python run_experiment.py --controller naive_slo --delay-ms 0 --workload steady
+python src/run_experiment.py --controller naive_slo --delay-ms 0 --workload steady
 
 # Fixed-frequency sweep (Deliverable D2)
-python run_experiment.py --sweep-clocks
+python src/run_experiment.py --sweep-clocks
 
 # Ablation: remove telemetry-age term
-python run_experiment.py --controller robust --delay-ms 500 --no-age
+python src/run_experiment.py --controller robust --delay-ms 500 --no-age
 
 # Ablation: remove error-budget term
-python run_experiment.py --controller robust --delay-ms 500 --no-budget
+python src/run_experiment.py --controller robust --delay-ms 500 --no-budget
 ```
 
 ### 6. Timing Characterisation (Deliverable D3)
 
 ```powershell
-python measure_timing.py
+python src/measure_timing.py
 ```
 
 ### 7. Scale-Out Simulation (Deliverable D10)
 
 ```powershell
-python scale_simulator.py --results-dir results/attempt_12 --slo-target 5.0 --base-rate 1.8 --n-workers 1 8 --seeds 20
+python src/scale_simulator.py --results-dir results/attempt_12 --slo-target 5.0 --base-rate 1.8 --n-workers 1 8 --seeds 20
 ```
 
-Trace-driven (`serving_sim.py`): measured batch times and per-clock power,
+Trace-driven (`src/serving_sim.py`): measured batch times and per-clock power,
 every controller input delayed, 20 paired seeds. Writes `sim_runs.csv` and
 `sim_summary.csv` (with robust - naive paired differences).
 
 ### 8. Analysis and Figures
 
 ```powershell
-python analyze_results.py --results-dir results/attempt_12 --slo-target 5.0
+python src/analyze_results.py --results-dir results/attempt_12 --slo-target 5.0
 ```
 
 ### 9. Results Dashboard
@@ -344,9 +357,9 @@ python dashboard/build_replication.py --attempts attempt_13 attempt_14 attempt_1
 ### Final results
 
 Headline results with figures: [Results at a Glance](#results-at-a-glance).
-Details: [`CONCLUSIONS_attempt_13_15.md`](CONCLUSIONS_attempt_13_15.md)
+Details: [`reports/CONCLUSIONS_attempt_13_15.md`](reports/CONCLUSIONS_attempt_13_15.md)
 (three 3-seed repeats, 315 runs) and
-[`CONCLUSIONS_attempt_12.md`](CONCLUSIONS_attempt_12.md) (first single-seed run).
+[`reports/CONCLUSIONS_attempt_12.md`](reports/CONCLUSIONS_attempt_12.md) (first single-seed run).
 
 ---
 
@@ -382,7 +395,7 @@ Priority rules:
 
 ### Capacity floor (all dynamic controllers)
 
-`capacity_model.py` fits full-batch service time `t(f) = A + B/f` to the
+`src/capacity_model.py` fits full-batch service time `t(f) = A + B/f` to the
 clock-sensitivity benchmark (within 2 % at 180/1147/2122 MHz) and gives each clock a
 capacity `batch / t(f)`. `naive_slo`, `robust` and the robust ablations never run a
 clock whose capacity is below 1.25 x the (delayed) observed arrival rate. Static
@@ -402,7 +415,7 @@ attempt_6 (1 seed, 24 runs) showed three problems, fixed before attempt_7:
 3. **Robust frozen by its guard.** The 300 ms hard guard blocked every down-step at the
    injected delays (all >= 500 ms), so robust just stayed at its start clock. Replaced by
    the delay-aware wait and age-scaled headroom above; the guard is kept only for the
-   midterm simulation (`experiments/stale_delay_sweep.py`).
+   midterm simulation (`src/experiments/stale_delay_sweep.py`).
 
 ### Changes after attempt_7
 
@@ -447,7 +460,7 @@ to the end because the 60 s P95 window stayed above the SLO. Fixes:
    (4.0-6.0 s in attempt_8-11), so attempts can be pooled.
 4. **Ablations in `--primary-only`:** `robust_v1` (the attempt_8-11 controller) and
    `robust_no_age` on sharp_burst x 4 delays; 35 runs per seed (`--no-ablation`: 27).
-5. **Simulator rebuilt** (`serving_sim.py`, `scale_simulator.py`): batched workers with
+5. **Simulator rebuilt** (`src/serving_sim.py`, `src/scale_simulator.py`): batched workers with
    batch times measured in attempt_10/11, measured idle/busy power, every controller
    input delayed. The old one gave the same numbers for every controller and delay.
    At SLO 5 s it reproduces naive's burst misses (12.7 % at 2500 ms vs 12 % on the GPU).
@@ -484,12 +497,12 @@ Each run: 10 s warm-up + 110 s measurement (40 s steady, 20 s burst at 4x,
 50 s recovery). Unfinished requests count as misses.
 
 **Workload: long-context requests** (`prompts/long_context.jsonl`, built by
-`make_long_prompts.py`): ~0.75-1.3k-token documents (service logs, sales
+`src/make_long_prompts.py`): ~0.75-1.3k-token documents (service logs, sales
 tables, meeting notes) with 16-32-token answers. On this laptop every CUDA
 kernel launch costs ~49 us of CPU time, so decode runs at ~57 ms/step at *any*
 GPU clock (GPU 12-18 % busy); short-prompt chat requests give DVFS nothing to
 trade. Prefill of long prompts is GPU-bound (77-92 % busy), so service time
-follows the clock. `bench_clock_sensitivity.py` (phase 1b of `run_demo.py`)
+follows the clock. `src/bench_clock_sensitivity.py` (phase 1b of `src/run_demo.py`)
 locks 180 / 1147 / 2122 MHz, picks the batch size with the largest
 slow/fast ratio (>= 1.5x required), and sets the base rate to 30 % of the
 top-clock capacity.
@@ -500,16 +513,16 @@ top-clock capacity.
 
 | ID | Deliverable | Script |
 |----|------------|--------|
-| D1 | Experiment harness + guaranteed clock reset | run_experiment.py |
+| D1 | Experiment harness + guaranteed clock reset | src/run_experiment.py |
 | D2 | Fixed-frequency characterisation | --sweep-clocks flag |
-| D3 | Real timing characterisation | measure_timing.py |
-| D4 | Workload suite (steady/ramp/burst) | load_generator.py |
-| D5 | Delay injector (0-1000 ms + jitter) | delay_buffer.py |
-| D6 | Baselines + oracle | controllers/ |
-| D7 | Robust controller with acceptance tests | controllers/robust_delay_budget.py |
-| D8 | Failure-boundary analysis | analyze_results.py Fig 7 |
+| D3 | Real timing characterisation | src/measure_timing.py |
+| D4 | Workload suite (steady/ramp/burst) | src/load_generator.py |
+| D5 | Delay injector (0-1000 ms + jitter) | src/delay_buffer.py |
+| D6 | Baselines + oracle | src/controllers/ |
+| D7 | Robust controller with acceptance tests | src/controllers/robust_delay_budget.py |
+| D8 | Failure-boundary analysis | src/analyze_results.py Fig 7 |
 | D9 | Ablation + non-redundancy | --no-age / --no-budget flags |
-| D10 | Scale-out simulation + reproducibility | scale_simulator.py |
+| D10 | Scale-out simulation + reproducibility | src/scale_simulator.py |
 
 ---
 

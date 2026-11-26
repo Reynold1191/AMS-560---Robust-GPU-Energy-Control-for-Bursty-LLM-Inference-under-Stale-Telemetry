@@ -25,13 +25,13 @@ Delay levels come from config.DELAY_VALUES_MS, derived from the measured
 NVML refresh (~500 ms) and clock/power settling (~1.25 s) on this GPU.
 
 Usage (Administrator PowerShell, project env active):
-    python run_demo.py                     # 3 seeds, ~5-6 h
-    python run_demo.py --seeds 42          # 1 seed,  ~2 h
-    python run_demo.py --quick             # 1 seed, sharp_burst only, ~1 h
-    python run_demo.py --primary-only      # proposal run: 24 primary conditions + 3 static_high
+    python src/run_demo.py                     # 3 seeds, ~5-6 h
+    python src/run_demo.py --seeds 42          # 1 seed,  ~2 h
+    python src/run_demo.py --quick             # 1 seed, sharp_burst only, ~1 h
+    python src/run_demo.py --primary-only      # proposal run: 24 primary conditions + 3 static_high
                                            # + 8 sharp_burst ablations x 3 paired seeds
                                            # (105 runs), ~5 h
-    python run_demo.py --primary-only --seeds 42   # 35 runs, 1 seed, ~1.9 h
+    python src/run_demo.py --primary-only --seeds 42   # 35 runs, 1 seed, ~1.9 h
 
 The SLO is fixed (--slo-target, default 5.0 s) so attempts are comparable;
 --calibrated-slo uses the per-attempt calibration instead.
@@ -39,13 +39,13 @@ The SLO is fixed (--slo-target, default 5.0 s) so attempts are comparable;
 Model, batch size and arrival rate are chosen by bench_clock_sensitivity.py
 (phase 1b) so the GPU clock actually changes decode speed; pass
 --no-auto-config to use --model / --batch-size / --base-rate instead.
-    python run_demo.py --sweep-from results/attempt_4   # reuse a finished sweep
-    python run_demo.py --smoke             # ~15 min code check, see SMOKE_MATRIX
+    python src/run_demo.py --sweep-from results/attempt_4   # reuse a finished sweep
+    python src/run_demo.py --smoke             # ~15 min code check, see SMOKE_MATRIX
 
 Repeat mode: independent primary-only runs back to back, each in its own
 results/attempt_N (N, N+1, ...), each with its own benchmark, probe and sweep.
 1-seed runs go first (fast feedback), then 3-seed runs:
-    python run_demo.py --repeat-1seed 2 --repeat-3seed 2 --skip-gpu-check
+    python src/run_demo.py --repeat-1seed 2 --repeat-3seed 2 --skip-gpu-check
 """
 
 from __future__ import annotations
@@ -61,6 +61,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)  # repository root: results/, prompts/
 sys.path.insert(0, HERE)
 from config import DELAY_VALUES_MS, ExperimentConfig  # noqa: E402
 
@@ -94,7 +95,7 @@ def probe_capacity(out: str, args, chosen: dict):
     from config import VERIFIED_CLOCKS_MHZ
     probe_dir = os.path.join(out, "probe")
     rate = round(PROBE_OVERLOAD * chosen["batch_size"] / chosen["service_top_s"], 2)
-    run([PYTHON, "run_experiment.py", "--controller", "static_high", "--workload", "steady",
+    run([PYTHON, os.path.join(HERE, "run_experiment.py"), "--controller", "static_high", "--workload", "steady",
          "--base-rate", rate, "--duration", 40, "--warmup", 10, "--seed", 1,
          "--run-id", "probe_top", "--model", args.model, "--prompts-file", args.prompts_file,
          "--batch-size", args.batch_size, "--results-dir", probe_dir])
@@ -177,7 +178,7 @@ def parse_args(argv=None):
         args.seeds = [42]
         args.skip_gpu_check = True
         if args.sweep_from is None:
-            args.sweep_from = latest_sweep_dir(os.path.join(HERE, "results"))
+            args.sweep_from = latest_sweep_dir(os.path.join(ROOT, "results"))
             if args.sweep_from is None:
                 p.error("--smoke needs a finished sweep (results/attempt_N/sweep_summary.csv) "
                         "or --sweep-from")
@@ -378,7 +379,7 @@ def repeat_plan(args, base: str) -> list:
 
 def run_repeats(args) -> int:
     """Run each planned attempt as its own run_demo.py --primary-only process."""
-    base = os.path.join(HERE, "results")
+    base = os.path.join(ROOT, "results")
     os.makedirs(base, exist_ok=True)
     plan = repeat_plan(args, base)
     passthrough = []
@@ -418,7 +419,7 @@ def run_repeats(args) -> int:
 
 def run(cmd, check=False) -> int:
     print("  $ " + " ".join(str(a) for a in cmd), flush=True)
-    rc = subprocess.run([str(a) for a in cmd], cwd=HERE).returncode
+    rc = subprocess.run([str(a) for a in cmd], cwd=ROOT).returncode
     if rc != 0:
         print(f"  WARNING: exit code {rc}", flush=True)
         if check:
@@ -430,7 +431,7 @@ def main(argv=None):
     args = parse_args(argv)
     if args.repeat:
         sys.exit(run_repeats(args))
-    out = args.results_dir or next_attempt_dir(os.path.join(HERE, "results"),
+    out = args.results_dir or next_attempt_dir(os.path.join(ROOT, "results"),
                                                "smoke" if args.smoke else "attempt")
     os.makedirs(out, exist_ok=True)
     sys.stdout = sys.stderr = Tee(os.path.join(out, "demo_run.log"))
@@ -468,8 +469,8 @@ def main(argv=None):
     # ── Phase 1 ──────────────────────────────────────────────────────────
     if not args.skip_gpu_check:
         phase("PHASE 1: GPU timing check (clock control, telemetry, delays)")
-        run([PYTHON, "check_gpu_timing.py"])
-        src = os.path.join(HERE, "results", "gpu_check", "gpu_check.json")
+        run([PYTHON, os.path.join(HERE, "check_gpu_timing.py")])
+        src = os.path.join(ROOT, "results", "gpu_check", "gpu_check.json")
         if os.path.exists(src):
             shutil.copy(src, os.path.join(out, "gpu_check.json"))
 
@@ -485,7 +486,7 @@ def main(argv=None):
             shutil.copy(os.path.join(args.sweep_from, "clock_sensitivity.json"), bench_out)
             print(f"Reusing benchmark from {args.sweep_from} (matches the reused sweep)")
         else:
-            run([PYTHON, "bench_clock_sensitivity.py", "--out", bench_out,
+            run([PYTHON, os.path.join(HERE, "bench_clock_sensitivity.py"), "--out", bench_out,
                  "--prompts-file", args.prompts_file])
         chosen = None
         if os.path.exists(bench_out):
@@ -543,14 +544,14 @@ def main(argv=None):
                         dirs_exist_ok=True)
     else:
         phase("PHASE 2: Fixed-clock sweep (sharp_burst, every verified clock)")
-        run([PYTHON, "run_experiment.py", "--sweep-clocks", "--workload", "sharp_burst",
+        run([PYTHON, os.path.join(HERE, "run_experiment.py"), "--sweep-clocks", "--workload", "sharp_burst",
              "--seeds", *args.sweep_seeds, *common], check=True)
 
     # ── Capacity floor for the dynamic controllers ───────────────────────
     capacity_file = os.path.join(out, "capacity.json")
     bench_path = os.path.join(out, "clock_sensitivity.json")
     if os.path.exists(bench_path):
-        run([PYTHON, "capacity_model.py", "--bench", bench_path,
+        run([PYTHON, os.path.join(HERE, "capacity_model.py"), "--bench", bench_path,
              "--sweep-dir", os.path.join(out, "sweep"),
              "--probe-csv", os.path.join(out, "probe", "probe_top_requests.csv"),
              "--out", capacity_file])
@@ -561,7 +562,7 @@ def main(argv=None):
 
     # ── Phase 3 ──────────────────────────────────────────────────────────
     phase("PHASE 3: SLO calibration")
-    rc = run([PYTHON, "calibrate_slo.py", "--results-dir", out,
+    rc = run([PYTHON, os.path.join(HERE, "calibrate_slo.py"), "--results-dir", out,
               "--budget-ratio", args.budget_ratio])
     cal_path = os.path.join(out, "slo_calibration.json")
     if not os.path.exists(cal_path):
@@ -586,7 +587,7 @@ def main(argv=None):
     # ── Phase 4 ──────────────────────────────────────────────────────────
     phase("PHASE 4: Oracle lookup table")
     oracle_table = os.path.join(out, "oracle_table.csv")
-    run([PYTHON, "oracle_builder.py", "--sweep-csv", os.path.join(out, "sweep_summary.csv"),
+    run([PYTHON, os.path.join(HERE, "oracle_builder.py"), "--sweep-csv", os.path.join(out, "sweep_summary.csv"),
          "--slo-target", slo, "--out", oracle_table])
 
     # ── Phase 5 ──────────────────────────────────────────────────────────
@@ -600,7 +601,7 @@ def main(argv=None):
         eta = el / (i - 1) * (len(matrix) - i + 1) if i > 1 else float("nan")
         print(f"\n  [{i}/{len(matrix)}] {run_id}   elapsed {el:.0f} min, ETA {eta:.0f} min",
               flush=True)
-        cmd = [PYTHON, "run_experiment.py", "--controller", ctrl, "--delay-ms", delay,
+        cmd = [PYTHON, os.path.join(HERE, "run_experiment.py"), "--controller", ctrl, "--delay-ms", delay,
                "--workload", workload, "--seed", seed, "--slo-target", slo,
                "--static-efficient-mhz", eff, "--run-id", run_id, *common]
         if ctrl == "oracle":
@@ -617,9 +618,9 @@ def main(argv=None):
     # ── Phase 6 ──────────────────────────────────────────────────────────
     phase("PHASE 6: Scale-out simulation and figures")
     if not args.smoke:
-        run([PYTHON, "scale_simulator.py", "--results-dir", out, "--slo-target", slo,
+        run([PYTHON, os.path.join(HERE, "scale_simulator.py"), "--results-dir", out, "--slo-target", slo,
              "--base-rate", args.base_rate, "--n-workers", 1, 8, "--seeds", 20])
-    run([PYTHON, "analyze_results.py", "--results-dir", out, "--slo-target", slo,
+    run([PYTHON, os.path.join(HERE, "analyze_results.py"), "--results-dir", out, "--slo-target", slo,
          "--workload", "sharp_burst"])
     try:
         summarize_paired(out, args.seeds, args.quick, args.primary_only, args.smoke,

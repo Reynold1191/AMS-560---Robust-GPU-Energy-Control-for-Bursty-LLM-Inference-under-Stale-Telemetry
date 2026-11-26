@@ -14,8 +14,7 @@ import pandas as pd
 from fpdf import FPDF
 
 REPO = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..",
-                 "AMS-560---Robust-GPU-Energy-Control-for-Bursty-LLM-Inference-under-Stale-Telemetry")
+    os.path.join(os.path.dirname(__file__), "..", "..", "src")
 )
 OUT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, REPO)

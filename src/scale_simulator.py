@@ -20,7 +20,7 @@ queue/arrival signals and no capacity floor; every controller and delay gave
 identical numbers (attempt_8-11 sim_summary.csv).
 
 Usage:
-  python scale_simulator.py --results-dir results/attempt_11 --slo-target 5.0 \\
+  python src/scale_simulator.py --results-dir results/attempt_11 --slo-target 5.0 \\
       --base-rate 1.75 --n-workers 1 8 --seeds 20
 """
 

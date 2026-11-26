@@ -23,7 +23,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path -Parent $MyInvocation.MyCommand.Path)
 
-$argsList = @("run_demo.py")
+$argsList = @("src\run_demo.py")
 if ($QuickTest)      { $argsList += "--quick" }
 elseif ($Primary)    { $argsList += "--primary-only" }
 elseif ($Demo)       { $argsList += @("--seeds", "42") }

@@ -21,7 +21,7 @@ Fit points, in order of preference:
   2. The isolated clock-sensitivity benchmark (fallback).
 
 Usage:
-    python capacity_model.py --bench results/attempt_8/clock_sensitivity.json \
+    python src/capacity_model.py --bench results/attempt_8/clock_sensitivity.json \
         --sweep-dir results/attempt_8/sweep --probe-csv results/attempt_8/probe/probe_top_requests.csv \
         --out results/attempt_8/capacity.json
 """

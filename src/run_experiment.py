@@ -3,10 +3,10 @@ run_experiment.py
 Main experiment runner.
 
 Usage (from an Administrator PowerShell):
-  python run_experiment.py --controller robust --delay-ms 500 --workload sharp_burst --seed 42
-  python run_experiment.py --controller naive_slo --delay-ms 1250
-  python run_experiment.py --controller default   --delay-ms 0   --workload steady
-  python run_experiment.py --sweep-clocks --seeds 41 42 43   # fixed-frequency characterisation
+  python src/run_experiment.py --controller robust --delay-ms 500 --workload sharp_burst --seed 42
+  python src/run_experiment.py --controller naive_slo --delay-ms 1250
+  python src/run_experiment.py --controller default   --delay-ms 0   --workload steady
+  python src/run_experiment.py --sweep-clocks --seeds 41 42 43   # fixed-frequency characterisation
 
 All logs go to results/<run_id>_*.csv and results/run_summary.csv.
 

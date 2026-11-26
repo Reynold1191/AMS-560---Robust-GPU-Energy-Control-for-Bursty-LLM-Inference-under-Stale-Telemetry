@@ -13,7 +13,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 
 def main() -> int:
     os.chdir(ROOT)
-    sys.path.insert(0, ROOT)
+    sys.path.insert(0, os.path.join(ROOT, "src"))
     code = pytest.main(["-q", "tests"])
     if code != 0:
         print("Tests failed, figure not generated.")
