@@ -111,17 +111,18 @@
     </div>
 
     <div class="card">
-      <h3>What happened in the kitchen (attempt_12)</h3>
+      <h3>What happened in the kitchen (one example day: attempt_13, seed 41)</h3>
       <div class="three">
-        <div><b class="good">Rush with a 2.5 s-old board</b><span>The naive manager was late on 11.7 % of rush orders (16 of 137).
-          The robust manager was late on 2.2 % (3 of 137).</span></div>
-        <div><b class="good">Gas bill on rush days</b><span>Robust used 5–6 % less energy than naive in 3 of 4 lag levels, mostly by turning the
-          stove down after the rush. Both use 11–27 % less than running full blast all day (static_high).</span></div>
-        <div><b>Quiet and ramp days</b><span>No real difference. Both managers kept every promise and used about the same energy.
-          That is expected: there is nothing to react to.</span></div>
+        <div><b class="good">Rush with a 2.5 s-old board</b><span>The naive manager was late on 36.8 % of rush orders (53 of 144).
+          The robust manager was late on none of them (0 of 144). With a fresh board naive was late on 6.3 %, robust on 0 %.</span></div>
+        <div><b class="good">Gas bill on rush days</b><span>Robust used 6–10 % less energy than naive at every board lag, mostly by turning the
+          stove down after the rush (25 % of the day on full flame instead of 57 %). It used 15–18 % less than running full blast all day.</span></div>
+        <div><b>Quiet and ramp days</b><span>Both managers kept the promise (at most one late order per day). On quiet days the gas bill is the same; on ramp days
+          robust spends a little more (+1 to +5 %), because it prepares for a rise the naive manager copes with anyway.</span></div>
       </div>
-      <p class="muted" style="margin-top:10px">attempt_12 had one seed per condition. A 20-seed kitchen simulator showed the same pattern,
-        and the 3-seed repeats below settle it on the real GPU.</p>
+      <p class="muted" style="margin-top:10px"><b>Note:</b> this is one showcase replicate out of six (2 sessions × 3 seeds), picked because it shows the
+        typical pattern cleanly. The other pages (Overview, Results, Run explorer, Ablation, Report figures) use the same replicate.
+        The card below and the <a href="#replication">3-seed replication</a> page give the numbers over all six.</p>
     </div>
 
     <div class="card">
@@ -147,7 +148,7 @@
         <div><b>attempt_1–5</b><span>Bring-up on the RTX 5060. Found decode is CPU-bound, so we switched to long-context prompts where the clock matters.</span></div>
         <div><b>attempt_6–7</b><span>Found controllers dropping to 180 MHz in quiet seconds. Added the capacity floor and in-stack capacity probe.</span></div>
         <div><b>attempt_8–11</b><span>~10 h of repeat runs. naive degrades with lag, but the old robust ≈ naive. Diagnosed why (lagging signals).</span></div>
-        <div><b>attempt_12</b><span>Robust v2 (forecast over board age, lag-aware) with a fixed 5 s SLO, ablations and a 20-seed simulator. Robust wins on rushes.</span></div>
+        <div><b>attempt_12</b><span>Robust v2 (forecast over board age, lag-aware) with a fixed 5 s SLO, ablations and a 20-seed simulator. One seed: robust wins on rushes.</span></div>
         <div><b>attempt_13–15</b><span>Three full 3-seed repeats (105 runs, ≈4.5 h each). Robust's gains hold in every replicate and become significant.</span></div>
       </div>
     </div>
@@ -284,7 +285,7 @@
     <header class="page-head">
       <p class="eyebrow">Primary comparison</p>
       <h1>naive vs robust across every condition</h1>
-      <p class="lede">Each bar is one 120 s GPU run (seed 42). Pick a workload and a metric.</p>
+      <p class="lede">Each bar is one 120 s GPU run (<span class="seed-label"></span>). Pick a workload and a metric.</p>
     </header>
     <div class="controls">
       <div class="seg" id="res-workload"></div>
@@ -374,7 +375,7 @@
     <div class="grid2">
       <div class="card"><h3>Measured capacity per clock</h3><div id="tb-cap" class="plot"></div></div>
       <div class="card"><h3>Probe and calibration</h3><table class="kv" id="tb-kv"></table>
-        <p class="muted" style="margin-top:12px">180 MHz cannot keep up (P95 of about 128 s), so it is only a fallback clock.
+        <p class="muted" style="margin-top:12px">180 MHz cannot keep up (P95 over 2 minutes), so it is only a fallback clock.
           667 MHz has the lowest J/token but misses the SLO in a burst. That is the trade-off a controller has to manage.</p></div>
     </div>
   </section>
@@ -384,8 +385,8 @@
     <header class="page-head">
       <p class="eyebrow">Deliverable D10</p>
       <h1>Trace-driven simulation and scale-out</h1>
-      <p class="lede"><code>serving_sim.py</code> replays the serving stack with the measured batch times and power
-        and delays every controller input. Each point is the mean of 20 paired seeds. Set
+      <p class="lede"><code>serving_sim.py</code> replays the serving stack with the measured batch times and power of the
+        attempt_13 session and delays every controller input. Each point is the mean of 20 simulated seeds. Set
         <b>workers = 8</b> to see a fleet that shares one clock policy.</p>
     </header>
     <div class="controls">
@@ -400,7 +401,7 @@
       <h3>robust vs naive, paired over 20 seeds</h3>
       <div class="table-wrap"><table class="data" id="sim-paired"></table></div>
       <p class="muted">Simulator and hardware agree on direction. On one GPU, robust's advantage in misses grows with delay.
-        In the fleet, robust mainly saves energy (8–13 %) with a miss rate close to naive's.</p>
+        In the fleet, robust mainly saves energy (7–14 % on steady and burst traffic) with a miss rate close to naive's.</p>
     </div>
   </section>
 
@@ -409,7 +410,8 @@
     <header class="page-head">
       <p class="eyebrow">analyze_results.py output</p>
       <h1>Report figures</h1>
-      <p class="lede">The static figures that go into the written report. Click one to enlarge it.</p>
+      <p class="lede">The static figures that go into the written report, regenerated with <code>analyze_results.py</code> on the showcase
+        seed alone. Click one to enlarge it.</p>
     </header>
     <div class="gallery" id="gallery"></div>
   </section>

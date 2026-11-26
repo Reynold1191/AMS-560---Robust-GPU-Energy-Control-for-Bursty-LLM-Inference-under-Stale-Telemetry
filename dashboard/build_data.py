@@ -4,8 +4,12 @@ Pack one results/attempt_N folder into a single JSON file for the dashboard.
 
   python dashboard/build_data.py                       # results/attempt_12
   python dashboard/build_data.py --attempt results/attempt_13
+  python dashboard/build_data.py --attempt results/attempt_13 --seed 41   # one seed only
 
-Writes dashboard/data/<attempt>.js (window.DASHBOARD_DATA["<attempt>"] = {...}).
+Writes dashboard/data/<attempt>.js (window.DASHBOARD_DATA["<attempt>"] = {...}),
+or <attempt>_s<seed>.js with --seed. With --seed, figures are read from
+dashboard/figures/<attempt>_s<seed>/ when that folder exists (analyze_results.py
+run on that seed alone), otherwise from results/<attempt>/.
 It is a script rather than a .json file so the dashboard also works when
 index.html is opened straight from disk (browsers block fetch() on file://).
 The data holds
@@ -101,9 +105,14 @@ def load_run(adir, run_id):
     return stats, trace
 
 
-def build(adir):
-    name = os.path.basename(os.path.normpath(adir))
+def build(adir, seed=None):
+    src = os.path.basename(os.path.normpath(adir))
+    name = src if seed is None else f"{src}_s{seed}"
     runs = pd.read_csv(os.path.join(adir, "run_summary.csv"))
+    if seed is not None:
+        runs = runs[runs.seed == seed].reset_index(drop=True)
+        if runs.empty:
+            raise SystemExit(f"No runs with seed {seed} in {adir}")
     rows, traces = [], {}
     for _, r in runs.iterrows():
         stats, trace = load_run(adir, r.run_id)
@@ -125,11 +134,18 @@ def build(adir):
         os.path.join(adir, "sim_summary.csv")) else pd.DataFrame()
     sweep = pd.read_csv(os.path.join(adir, "sweep_summary.csv")) if os.path.exists(
         os.path.join(adir, "sweep_summary.csv")) else pd.DataFrame()
-    figs = sorted(f for f in os.listdir(adir) if f.startswith("fig") and f.endswith(".png"))
+    fdir = os.path.join(HERE, "figures", name)
+    if seed is not None and os.path.isdir(fdir):
+        rel, fsrc = f"figures/{name}", fdir
+    else:
+        rel, fsrc = f"../results/{src}", adir
+    figs = sorted(f for f in os.listdir(fsrc) if f.startswith("fig") and f.endswith(".png"))
     cal = _json("slo_calibration.json") or {}
     return {
         "attempt": name,
         "meta": {
+            "source_attempt": src,
+            "seed_filter": seed,
             "probe": _json("probe.json"),
             "capacity": _json("capacity.json"),
             "slo_target_s": float(runs.slo_target_s.iloc[0]),
@@ -137,7 +153,7 @@ def build(adir):
             "budget_ratio": cal.get("budget_ratio", 0.05),
             "n_runs": int(len(runs)),
             "seeds": sorted(int(s) for s in runs.seed.unique()),
-            "figures": [f"../results/{name}/{f}" for f in figs],
+            "figures": [f"{rel}/{f}" for f in figs],
         },
         "runs": rows,
         "traces": traces,
@@ -149,8 +165,9 @@ def build(adir):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build the dashboard data file")
     ap.add_argument("--attempt", default=os.path.join(ROOT, "results", "attempt_12"))
+    ap.add_argument("--seed", type=int, default=None, help="Keep only this seed's runs")
     args = ap.parse_args(argv)
-    data = build(args.attempt)
+    data = build(args.attempt, args.seed)
     out_dir = os.path.join(HERE, "data")
     os.makedirs(out_dir, exist_ok=True)
     out = os.path.join(out_dir, data["attempt"] + ".js")

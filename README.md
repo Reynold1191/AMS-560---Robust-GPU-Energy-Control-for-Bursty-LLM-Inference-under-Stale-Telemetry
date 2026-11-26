@@ -168,20 +168,26 @@ Double-click `dashboard/index.html` (works offline, no server needed), or:
 
 ```powershell
 python dashboard/serve.py                 # opens http://localhost:8560/dashboard/
-python dashboard/serve.py --attempt results/attempt_13 --rebuild   # a newer attempt
+python dashboard/serve.py --rebuild       # re-pack the showcase seed first
 ```
 
 Interactive pages: overview and conclusions, naive vs robust per condition,
 a second-by-second run explorer (true vs delayed signals, clock, power,
 per-request latency), ablation, testbed characterisation, simulation, report
 figures, a 3-seed replication page, and a team & code guide. Needs only
-Python; Plotly is vendored in `dashboard/vendor/`. The packed data for
-attempt_12 and the pooled repeats is in `dashboard/data/`. To refresh the
-replication page after more repeats:
+Python; Plotly is vendored in `dashboard/vendor/`.
+
+The single-run pages (overview, results, run explorer, ablation, testbed,
+figures) show one showcase replicate, **attempt_13 seed 41**, chosen because it
+shows the typical pattern cleanly; every such page says so. The replication
+page uses all replicates and carries the statistics. To rebuild:
 
 ```powershell
+python dashboard/build_data.py --attempt results/attempt_13 --seed 41
 python dashboard/build_replication.py --attempts attempt_13 attempt_14 attempt_15
 ```
+
+`index.html?attempt=attempt_12` still opens the older single-seed run.
 
 ### Final results
 
