@@ -5,6 +5,18 @@ AMS 560 * Big Data Systems, Algorithms and Networks * Stony Brook University
 
 ---
 
+## Team: Group 10
+
+| # | Member | Role | Main contributions |
+|---|---|---|---|
+| 1 | **Nirzaree Devasthale** | Data layer, static baselines, controller factory | Shared config, request queue, `DelayBuffer` (stale telemetry), SLO error-budget tracker, static controllers, controller factory |
+| 2 | **Priyanshi Jain** | Controller interface and dynamic policies | `BaseController` with dwell, naive SLO baseline, first robust controller (risk score), controller tests |
+| 3 | **Quynh Tran** | Metrics and analysis | `MetricsCollector`, energy integration over NVML power, percentile stats, `analyze_results.py`, oracle table builder |
+| 4 | **Yongeun** | Load generation and scale simulation | Poisson load generator (steady, ramp, sharp burst, trace replay), multi-worker scale simulator, load tests |
+| 5 | **Thai Toan Tran** | GPU, LLM serving, orchestration and integration | RTX 5060 testbed (clock locking, NVML telemetry), LLM worker, experiment runner and `run_demo.py`, robust v2 controller, `serving_sim.py`, results dashboard |
+
+---
+
 ## Research Question
 
 > Can a delay-aware GPU frequency controller reduce LLM inference energy

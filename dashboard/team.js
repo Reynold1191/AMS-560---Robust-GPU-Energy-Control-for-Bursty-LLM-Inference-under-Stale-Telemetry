@@ -16,7 +16,7 @@ window.TEAM = {
               "controllers/static.py", "controllers/__init__.py"],
     },
     {
-      n: 2, name: "priyanshial", initials: "P", color: "#7c6fd6",
+      n: 2, name: "Priyanshi Jain", initials: "PJ", color: "#7c6fd6",
       role: "Controller interface & dynamic policies",
       did: [
         "Defined <code>ControllerState</code> and <code>BaseController</code>: clock bounds and minimum dwell between changes.",
@@ -37,7 +37,7 @@ window.TEAM = {
       files: ["metrics.py", "analyze_results.py", "oracle_builder.py"],
     },
     {
-      n: 4, name: "gdakate", initials: "G", color: "#e07b24",
+      n: 4, name: "Yongeun", initials: "Y", color: "#e07b24",
       role: "Load generation & scale simulation",
       did: [
         "Wrote the <b>load generator</b>: Poisson arrivals for steady, ramp, sharp-burst and trace-replay workloads.",
