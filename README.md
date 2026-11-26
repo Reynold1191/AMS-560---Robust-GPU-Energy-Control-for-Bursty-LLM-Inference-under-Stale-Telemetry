@@ -277,6 +277,9 @@ is a thin wrapper (`-QuickTest`, `-Demo`). Reuse a finished sweep with
 `--sweep-from results\attempt_N`. Run several attempts back to back with
 `python src/run_demo.py --repeat-1seed 1 --repeat-3seed 1 --skip-gpu-check`.
 
+Before a run: plug in AC, set Windows power mode to Best performance and close
+heavy apps. Decode is CPU-bound, so the CPU state changes batch time by up to ~35 %.
+
 What the controller sees: every input (NVML sample AND queue length, P95,
 budget burn, arrival stats) is delayed by `--delay-ms`; see `src/observation.py`.
 Delay levels `[0, 500, 1250, 2500]` ms come from the measured NVML refresh
@@ -369,7 +372,9 @@ Details: [`reports/CONCLUSIONS_attempt_13_15.md`](reports/CONCLUSIONS_attempt_13
 | static_high | Locked to highest supported clock |
 | static_low | Locked to lowest feasible clock |
 | naive_slo | Adapts to P95 latency + queue from delayed telemetry; ignores age/budget |
-| robust | Uses telemetry age AND error-budget burn rate as explicit risk signals |
+| robust | Uses telemetry age AND error-budget burn rate as explicit risk signals, plus age-compensated forecast and lag-aware P95 (v2) |
+| robust_v1 | Ablation: robust without the forecast and lag-aware P95 (first robust design) |
+| robust_no_age | Ablation: robust that does not know the telemetry age |
 | oracle | Fresh-telemetry upper bound using pre-measured frequency lookup table |
 
 ### Robust Controller Risk Score
@@ -399,85 +404,37 @@ capacity `batch / t(f)`. `naive_slo`, `robust` and the robust ablations never ru
 clock whose capacity is below 1.25 x the (delayed) observed arrival rate. Static
 controllers have no floor.
 
-### Changes after attempt_6
+### Naive vs robust v1 vs robust v2
 
-attempt_6 (1 seed, 24 runs) showed three problems, fixed before attempt_7:
+All three read the same delayed inputs (queue, P95, arrival rate, error-budget burn)
+and share the same capacity floor. They differ in what they do with the age of that
+data.
 
-1. **Ramp starved.** The generator redrew the arrival gap on every rate change; on a
-   ramp the rate changes at every 0.25 s check, so runs got ~5 requests. It now redraws
-   only on a phase change. The ramp also went down (fixed 1.2 req/s end vs 2.35 base);
-   it now ends at 3 x the base rate.
-2. **Start-up trap.** With an empty queue and a lagging P95, every dynamic controller
-   stepped down to 180 MHz (0.9 req/s capacity vs 2.35 arriving) and noticed 25-30 s
-   later; most misses came from that, not the burst. Fixed by the capacity floor.
-3. **Robust frozen by its guard.** The 300 ms hard guard blocked every down-step at the
-   injected delays (all >= 500 ms), so robust just stayed at its start clock. Replaced by
-   the delay-aware wait and age-scaled headroom above; the guard is kept only for the
-   midterm simulation (`src/experiments/stale_delay_sweep.py`).
+| | `naive_slo` | `robust_v1` | `robust` (v2, final) |
+|---|---|---|---|
+| Knows how old its data is | No | Yes | Yes |
+| Steps up when | P95 > SLO (+1) | P95 > SLO or burn > 2 (+2), or risk score > 0.65 (+1) | Same as v1, plus a **forecast**: when the queue surges it rolls rate and queue forward over *telemetry age + 0.7 s settling* and jumps straight to the clock that covers that demand |
+| Steps down when | P95 < 0.8 x SLO and the queue is empty | Risk < 0.30, P95 under a headroom that shrinks as the data gets older, and only once its last change can be visible in the data (age + settling + one batch) | Same as v1, plus a **lag-aware** step down: once the queue has been empty for the whole blind window, the 60 s P95 and burn are treated as history |
+| After a burst | Stays at 2122 MHz while the 60 s P95 window is above the SLO | Same as naive | Returns to a low clock as soon as the queue is empty |
 
-### Changes after attempt_7
+**Why v1 was not enough.** On the GPU, v1 made the same clock choices as naive.
+Every up-step came from the shared capacity floor, which reads a 10 s arrival
+rate that is itself 2.5 s old, so both reacted to the burst at the same moment.
+After the burst both kept the top clock because the slow P95 window still looked
+bad. v2 fixes both ends: the forecast reacts before the rate catches up, and the
+lag-aware rule stops paying for a P95 that only describes the past.
 
-attempt_7 fixed steady and ramp (0 % misses, ~480 ramp requests), but on sharp_burst
-both controllers missed 19-36 %: in the runs a full batch at 2122 MHz took 2.6-2.9 s
-(~5.9 req/s) against 2.0 s in the isolated benchmark, so the burst (~7.4 req/s
-delivered) overloaded every controller, and one run that happened to get 2.0 s batches
-was the only 0 % result. Fixes:
+Pooled over 9 replicates at 2500 ms delay (sharp_burst):
 
-1. **Load from the real stack.** Phase 1c overloads the top clock inside the runner
-   (all threads running) and measures full-batch throughput; the base rate is set so
-   the burst peak is 0.9 x that capacity (`probe.json`).
-2. **Capacity floor from in-stack data.** `capacity.json` now uses median full-batch
-   times from the sweep and the probe (A + B/f only fills unmeasured clocks).
-3. **Scheduled arrivals.** The load generator draws a non-homogeneous Poisson schedule
-   (thinning) from the seed and enqueues overdue requests at once, stamped with their
-   scheduled time; GIL contention no longer drops ~20 % of burst arrivals.
-4. **Same-session reference.** `--primary-only` adds `static_high` (2122 MHz) per
-   workload, 27 runs per seed.
-
-Before a run: plug in AC, set Windows power mode to Best performance, close heavy
-apps. Decode is CPU-bound, so CPU state changes batch time by up to ~35 %.
-
-### Changes after attempt_8-11
-
-attempt_8-11 (216 runs, 4 independent sessions) were clean and repeatable (J/token
-within ~2 %), and showed stale telemetry raising burst misses from ~1 % to ~12 %.
-But robust and naive_slo were indistinguishable (32 paired runs per workload,
-p > 0.1 for energy, misses and P95): in 25 of 32 burst pairs their clock traces were
->95 % identical, because every up-step came from the shared capacity floor reading a
-10 s arrival rate that is itself `age` old, and after the burst both held 2122 MHz
-to the end because the 60 s P95 window stayed above the SLO. Fixes:
-
-1. **Robust v2: age-compensated forecast.** The observed rate and queue are rolled
-   forward over telemetry age + settling when the queue is surging; robust steps up
-   to the clock that covers that demand (top clock on a large stale surge) before
-   the 10 s rate catches up. `robust_no_age` uses settling only.
-2. **Robust v2: lag-aware P95 / burn.** With no backlog over the blind window, the
-   60 s P95 and burn are treated as history: no emergency up-step, and a
-   capacity-backed down-step when the next clock covers 1.35 x the recent peak.
-3. **Fixed SLO** (`--slo-target`, default 5.0 s) instead of per-attempt calibration
-   (4.0-6.0 s in attempt_8-11), so attempts can be pooled.
-4. **Ablations in `--primary-only`:** `robust_v1` (the attempt_8-11 controller) and
-   `robust_no_age` on sharp_burst x 4 delays; 35 runs per seed (`--no-ablation`: 27).
-5. **Simulator rebuilt** (`src/serving_sim.py`, `src/scale_simulator.py`): batched workers with
-   batch times measured in attempt_10/11, measured idle/busy power, every controller
-   input delayed. The old one gave the same numbers for every controller and delay.
-   At SLO 5 s it reproduces naive's burst misses (12.7 % at 2500 ms vs 12 % on the GPU).
-
-Simulated, 1 GPU, SLO 5 s, 20 paired seeds (robust - naive):
-
-| Workload | 0 ms | 500 ms | 1250 ms | 2500 ms |
+| | naive_slo | robust_v1 | robust_no_age | robust (v2) |
 |---|---|---|---|---|
-| sharp_burst J/token | -8.4 % | -8.1 % | -6.3 % | -4.2 % |
-| sharp_burst misses | 4.3 -> 2.4 % | 4.7 -> 1.6 % | 8.1 -> 3.4 % | 12.7 -> 5.7 % |
-| steady J/token | +0.2 % | +0.5 % | +0.9 % | +2.0 % |
-| ramp J/token | +0.1 % | +1.1 % | +2.5 % | +3.5 % |
+| Burst requests late | 49.4 % | 49.0 % | 33.2 % | **5.6 %** |
+| Energy (J/token) | 0.435 | 0.434 | 0.420 | **0.414** |
+| Clock changes per run | 4 | 4 | 15.4 | 7.8 |
 
-Burst misses at 2500 ms by ablation: naive 12.7 %, robust_v1 11.7 %, robust_no_age
-9.6 %, robust 5.7 %. With 8 workers sharing one clock policy, robust uses 2-14 % less
-energy than naive at the same burst miss rate (within 0.8 pp).
-Steady and ramp misses are ~0 for both. The extra energy on steady/ramp at large
-delays is the price of provisioning ahead of a queue surge that stale telemetry
-cannot confirm. These are simulator results; the GPU runs decide.
+`robust_no_age` is v2 without knowing the age (it forecasts over settling only). It
+removes part of naive's misses but changes clock twice as often as v2, so knowing the
+age is what makes the forecast work.
 
 ---
 
