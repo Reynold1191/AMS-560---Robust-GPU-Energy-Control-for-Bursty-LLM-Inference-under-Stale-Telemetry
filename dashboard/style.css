@@ -223,3 +223,93 @@ table.deliv .note { color: var(--ink-3); font-size: 12.5px; margin-top: 2px; }
 .seed-note { margin-top: 14px; padding: 10px 14px; border-left: 3px solid var(--warn); border-radius: 8px;
   background: color-mix(in srgb, var(--warn) 9%, transparent); font-size: 13.5px; line-height: 1.5; color: var(--ink-2); max-width: 980px; }
 .seed-note b { color: var(--ink); }
+
+/* ── explainer animations (explainers.js) ── */
+.xp { margin-top: 6px; }
+.xp-stage { border: 1px solid var(--line); border-radius: 12px; background: var(--bg); overflow: hidden; }
+.xp-svg { display: block; width: 100%; height: auto; font-family: "Segoe UI", system-ui, sans-serif; }
+.xp-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+.xp-btn { font: inherit; font-size: 13.5px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); cursor: pointer; transition: transform .12s ease, background .12s ease, border-color .12s ease; }
+.xp-btn:hover { border-color: var(--accent); transform: translateY(-1px); }
+.xp-btn:active { transform: translateY(1px) scale(.98); }
+.xp-play { min-width: 96px; background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.xp-scrub { flex: 1; min-width: 160px; accent-color: var(--accent); }
+.seg button { transition: background .12s ease; }
+.seg button:not(.on):hover { background: var(--accent-soft); }
+.xp-lane { fill: var(--panel); stroke: var(--line); }
+.xp-h { font-size: 15px; font-weight: 650; fill: var(--ink); }
+.xp-sub, .xp-k { font-size: 12.5px; fill: var(--ink-3); }
+.xp-k2 { font-size: 13px; fill: var(--ink-2); }
+.xp-v { font-size: 15px; font-weight: 650; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.xp-tiny { font-size: 11px; fill: var(--ink-3); }
+.xp-tiny.bad, .bad { fill: var(--bad); }
+.good { fill: var(--accent); }
+.xp-warn { font-size: 12.5px; font-weight: 650; fill: var(--bad); }
+.xp-clock { font-size: 18px; font-weight: 700; fill: var(--ink); font-variant-numeric: tabular-nums; }
+.xp-phase { font-size: 13px; font-weight: 700; letter-spacing: .04em; fill: var(--ink-3); }
+.xp-phase.ph-t-burst { fill: var(--bad); }
+.xp-step { font-size: 13px; font-weight: 800; fill: #fff; paint-order: stroke; stroke: var(--accent); stroke-width: 16px; stroke-linejoin: round; }
+.ph-steady { fill: var(--line); } .ph-burst { fill: var(--bad); opacity: .55; } .ph-recovery { fill: var(--accent-soft); }
+.xp-head { stroke: var(--ink); stroke-width: 2; } .xp-headdot { fill: var(--ink); }
+.xp-board { fill: #18232b; }
+.xp-board-t { font: 600 10.5px var(--mono); fill: #8fa3b3; letter-spacing: .06em; }
+.xp-board-k { font-size: 13px; fill: #c9d6df; }
+.xp-board-v { font: 700 20px var(--mono); fill: #f3f7fa; } .xp-board-v.hot { fill: #ff8b7f; }
+.xp-fo { font-size: 12.5px; line-height: 1.35; color: var(--ink-2); height: 100%; box-sizing: border-box; }
+.xp-bubble { background: var(--accent-soft); border-radius: 10px; padding: 8px 10px; color: var(--ink); }
+.xp-bubble b { font-weight: 600; display: block; }
+.xp-chg { display: block; margin-top: 3px; font-weight: 700; font-size: 12px; }
+.xp-rail { stroke: var(--ink-3); stroke-width: 3; stroke-linecap: round; }
+.xp-ticket { fill: #fff7e0; stroke: #c9a64a; stroke-width: 1; }
+.xp-ticket.rush { fill: #ffe2b8; stroke: #d98c1f; }
+.xp-ticket.late { fill: var(--bad-soft); stroke: var(--bad); stroke-width: 1.5; }
+.xp-lvl { fill: var(--line); }
+.xp-pan { fill: #3b4450; }
+.xp-dish { fill: #f6d58e; } .xp-dish.rush { fill: #ffb45c; }
+.xp-plate { fill: var(--accent); } .xp-plate.late { fill: var(--bad); }
+.xp-big { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.xp-of { font-size: 16px; font-weight: 600; fill: var(--ink-3); }
+.xp-track { fill: var(--line); }
+.xp-emoji { font-family: "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif; }
+.xp-prompt { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.xp-pr-top { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--ink-3); }
+.xp-kind { background: var(--accent-soft); color: var(--accent); font-weight: 700; padding: 0 7px; border-radius: 99px; text-transform: uppercase; font-size: 10.5px; letter-spacing: .05em; }
+.xp-pr-body { font: 11px/1.45 var(--mono); color: var(--ink-2); white-space: nowrap; overflow: hidden; flex: 1; }
+.xp-pr-body b { color: var(--ink); white-space: normal; }
+.xp-pr-foot { font-size: 12px; font-weight: 650; color: var(--ink); border-top: 1px solid var(--line); padding-top: 6px; }
+.xp-burstband { fill: var(--bad); opacity: .1; }
+.xp-axis { stroke: var(--line); stroke-width: 1.5; }
+.xp-spark { fill: none; stroke: var(--ink-2); stroke-width: 2; }
+.xp-arrow, .xp-arrow-up { stroke: var(--ink-3); stroke-width: 2; fill: none; stroke-dasharray: 4 4; }
+.xp-box { fill: var(--panel); stroke: var(--line); }
+.xp-req { fill: #f2dfb3; } .xp-req.rush { fill: #ffbf73; } .xp-req.late { fill: var(--bad); }
+.xp-gpu { fill: #121a21; }
+.xp-gpu-t { font: 700 12.5px var(--mono); fill: #9fe6d2; }
+.xp-gpu-k { font-size: 12.5px; fill: #9aa9b5; }
+.xp-gpu-v { font: 700 15px var(--mono); fill: #f3f7fa; }
+.xp-gpu-track, .xp-gpu-lvl { fill: #2a3540; }
+.xp-pw { fill: #f0a44b; }
+.xp-slot { fill: #1d2731; stroke: #2e3b47; } .xp-slot.on { fill: #3cc6a4; stroke: none; } .xp-slot.on.rush { fill: #ffb45c; }
+.xp-resp { fill: var(--accent-soft); stroke: var(--accent); } .xp-resp.late { fill: var(--bad-soft); stroke: var(--bad); }
+.xp-resp-t { font-size: 11.5px; font-weight: 700; fill: var(--ink); }
+.xp-slo { stroke: var(--bad); stroke-dasharray: 5 4; stroke-width: 1.5; }
+.xp-pt { fill: var(--accent); opacity: .75; } .xp-pt.late { fill: var(--bad); opacity: 1; }
+.xp-pipe { fill: var(--line); }
+.xp-pkt { fill: #18232b; } .xp-pkt-t { font: 700 9px var(--mono); fill: #fff; }
+.xp-ctl { fill: var(--panel); stroke-width: 2; }
+.xp-say { font-size: 12.5px; color: var(--ink); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .xp-btn, .seg button { transition: none; } }
+
+/* narrow screens: sidebar on top, content full width */
+@media (max-width: 760px) {
+  body { flex-direction: column; height: auto; }
+  .side { width: auto; height: auto; position: static; padding: 14px; }
+  #nav { flex-direction: row; flex-wrap: wrap; }
+  .nav-sep, .side-foot { display: none; }
+  main { padding: 18px 14px 40px; }
+  .cast, .timeline, .kpis { grid-template-columns: 1fr; }
+  .xp-scrub { order: 5; flex-basis: 100%; }
+  .xp-stage { overflow-x: auto; }
+  .xp-svg { min-width: 780px; }
+}

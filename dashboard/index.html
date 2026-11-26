@@ -62,6 +62,14 @@
       </div>
     </div>
 
+    <div class="card">
+      <h3>Watch one lunch rush: two managers, one 2.5 s-old board</h3>
+      <p class="muted">A replay of two real GPU runs with the same orders. The rush starts at 40 s. Watch the board numbers against the
+        tickets really on the rail. The naive manager turns the stove up late, then leaves it on full after the rush. The robust manager turns it up
+        early and turns it down once the rail is empty.</p>
+      <div class="xp" data-xp="kitchen"></div>
+    </div>
+
     <div class="grid2">
       <div class="card story">
         <h3>The problem: a manager reading an old board</h3>
@@ -94,6 +102,14 @@
         <p class="muted">Both managers share one safety rule, the <b>capacity floor</b>: never set the stove so low that the kitchen
           serves fewer orders than 1.25 × the order rate it sees. So the comparison is about the extra judgement only.</p>
       </div>
+    </div>
+
+    <div class="card">
+      <h3>The same thing, as the machine sees it</h3>
+      <p class="muted">Each request is a real long-context prompt (a service log, a sales table or meeting notes, 750–1270 tokens) with a short
+        question. Requests wait in a queue. The GPU runs up to 16 at a time and sends back answers of up to 16 tokens. Every second the controller
+        sets the GPU clock from telemetry that reaches it 2.5 s late. Switch between naive and robust to compare.</p>
+      <div class="xp" data-xp="machine"></div>
     </div>
 
     <div class="card">
@@ -446,6 +462,9 @@
 
 <script src="team.js"></script>
 <script src="data/replication.js"></script>
+<script src="data/explainers.js"></script>
+<script src="explainers.js"></script>
 <script src="app.js"></script>
+<script>window.XP && window.XP.mountAll();</script>
 </body>
 </html>

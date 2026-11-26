@@ -29,6 +29,53 @@ is delayed or stale at the exact moment a workload burst arrives?
 
 ---
 
+## The Problem in Two Animations
+
+Both animations replay **real GPU runs**: the same 2-minute workload (a 4x
+traffic burst from 40 s to 60 s), with telemetry that is **2.5 s old**.
+
+### What the machine does
+
+<p align="center">
+  <img src="docs/img/machine_pipeline.gif" width="820" alt="Prompts become requests, wait in a queue, run in batches of 16 on the GPU and return as answers, while the controller sets the clock from 2.5 s old telemetry">
+</p>
+
+1. **A user sends a prompt.** Each request is a long-context prompt (a service
+   log, a sales table or meeting notes, 750-1270 tokens) with a short question.
+2. **Requests wait in a queue.** During the burst they arrive 4x faster.
+3. **The GPU runs up to 16 requests per batch**, reads the prompts, writes
+   answers of up to 16 tokens, and takes the next batch. A higher clock makes a
+   batch faster but uses more power.
+4. **Answers go back.** Every answer has a **5 s promise** (the SLO). Red ones
+   broke it.
+5. **Every second the controller resets the clock**, but the readings it sees
+   pass through a **2.5 s delay buffer**: it acts on the queue as it was, not as
+   it is.
+
+Shown here: the reactive **naive** controller. It sees the queue late, raises
+the clock late, and dozens of answers break the 5 s promise. Then it keeps the
+maximum clock long after the queue is empty.
+
+### The same thing as a kitchen
+
+<p align="center">
+  <img src="docs/img/kitchen_rush.gif" width="820" alt="Two kitchen managers during a lunch rush, both reading a status board that is 2.5 s old">
+</p>
+
+Orders are requests, the ticket rail is the queue, the stove is the GPU clock,
+and the status board is the telemetry, **2.5 s out of date**. Both managers get
+exactly the same orders. Watch **"board says"** against the tickets really
+waiting. The **naive manager** trusts the old board, turns the stove up late
+(**53 of 144 rush orders late**), and then leaves it on full flame because
+"recent dishes were slow". The **robust manager** knows the board is old,
+turns up early (**0 late**), turns down once the rail is empty, and uses
+**8 % less gas per dish** (energy per token).
+
+Interactive versions, with play, pause, speed and a naive/robust switch, are
+on the first page of the dashboard (`dashboard/index.html`).
+
+---
+
 ## Results at a Glance
 
 > **Telling the controller how old its data is turns a failing GPU power
@@ -287,6 +334,8 @@ page uses all replicates and carries the statistics. To rebuild:
 
 ```powershell
 python dashboard/build_data.py --attempt results/attempt_13 --seed 41
+python dashboard/build_explainers.py      # data for the two explainer animations
+python docs/make_explainer_gifs.py        # README GIFs (needs Node 22+ and Edge/Chrome)
 python dashboard/build_replication.py --attempts attempt_13 attempt_14 attempt_15
 ```
 

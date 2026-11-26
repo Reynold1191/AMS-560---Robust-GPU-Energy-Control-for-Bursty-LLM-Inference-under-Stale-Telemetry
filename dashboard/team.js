@@ -291,6 +291,7 @@ window.TEAM = {
     { path: "dashboard/", layer: "docs", owner: 5, one: "This dashboard.",
       what: ["<code>build_data.py</code> packs one results folder (optionally one seed, <code>--seed 41</code>) into <code>data/&lt;attempt&gt;.js</code>.",
              "<code>build_replication.py</code> pools the 3-seed repeats into <code>data/replication.js</code> with the paired statistics.",
+             "<code>build_explainers.py</code> packs two real runs (naive and robust, showcase seed, 2.5 s delay) and the prompts into <code>data/explainers.js</code>; <code>explainers.js</code> plays them as the kitchen and machine animations on the first page. <code>docs/make_explainer_gifs.py</code> records the same animations as README GIFs.",
              "<code>figures/attempt_13_s41/</code> holds the report figures regenerated on the showcase seed. <code>serve.py</code> serves it all on localhost:8560; <code>app.js</code> draws the pages with Plotly."],
       ideas: ["Open <code>dashboard/index.html</code> directly, or run <code>python dashboard/serve.py</code>.", "<code>index.html?attempt=attempt_12</code> shows the older single-seed run."], present: "Use it live during the talk." },
   ],

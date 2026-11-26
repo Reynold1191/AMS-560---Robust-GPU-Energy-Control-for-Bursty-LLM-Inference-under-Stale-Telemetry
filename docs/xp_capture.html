@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- Frame page for docs/record_explainers.mjs: draws one explainer frame at a given time. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../dashboard/style.css">
+<style>
+  html, body { height: auto; background: var(--bg); }
+  body { display: block; padding: 0; margin: 0; }
+  #f { width: 1200px; }
+  #f .xp-stage { border: 0; border-radius: 0; }
+</style>
+</head>
+<body>
+<div id="f"><div class="xp-stage"></div></div>
+<script src="../dashboard/data/explainers.js"></script>
+<script src="../dashboard/explainers.js"></script>
+<script>
+  window.setT = (kind, t, c) => { document.querySelector("#f .xp-stage").innerHTML = window.XP.render(kind, t, c); return document.querySelector("#f").getBoundingClientRect().height; };
+</script>
+</body>
+</html>
