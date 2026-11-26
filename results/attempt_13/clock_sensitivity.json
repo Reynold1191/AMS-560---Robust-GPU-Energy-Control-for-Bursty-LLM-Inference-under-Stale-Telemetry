@@ -1,0 +1,136 @@
+{
+  "rule": "sensitivity >= 1.5, top-clock batch time <= 8.0 s, highest sensitivity wins; base_rate = 0.3 x top-clock capacity",
+  "clocks": [
+    180,
+    1147,
+    2122
+  ],
+  "prompts_file": "prompts/long_context.jsonl",
+  "candidates": [
+    {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 4,
+      "prompt_tokens": 1267,
+      "new_tokens": 24,
+      "per_clock": {
+        "180": {
+          "batch_time_s": 6.77160640002694,
+          "power_w": 11.120062827225132,
+          "util_pct": 99.30628272251309,
+          "clock_mhz": 180,
+          "energy_j": 75.30068860953936
+        },
+        "1147": {
+          "batch_time_s": 0.9980246999766678,
+          "power_w": 24.36759649122807,
+          "util_pct": 90.89473684210526,
+          "clock_mhz": 1140,
+          "energy_j": 24.319463177310396
+        },
+        "2122": {
+          "batch_time_s": 0.7439371999935247,
+          "power_w": 36.20477777777778,
+          "util_pct": 69.68888888888888,
+          "clock_mhz": 2090.3333333333335,
+          "energy_j": 26.934081006387785
+        }
+      },
+      "sensitivity": 9.102389825493175,
+      "service_top_s": 0.7439371999935247
+    },
+    {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 8,
+      "prompt_tokens": 1267,
+      "new_tokens": 32,
+      "per_clock": {
+        "180": {
+          "batch_time_s": 13.32053830003133,
+          "power_w": 11.503514627659575,
+          "util_pct": 99.57047872340425,
+          "clock_mhz": 179.7872340425532,
+          "energy_j": 153.23300718271003
+        },
+        "1147": {
+          "batch_time_s": 1.865438400011044,
+          "power_w": 27.688838095238093,
+          "util_pct": 94.77142857142857,
+          "clock_mhz": 1140,
+          "energy_j": 51.65182183454579
+        },
+        "2122": {
+          "batch_time_s": 1.188588700024411,
+          "power_w": 47.409191176470586,
+          "util_pct": 90.67647058823529,
+          "clock_mhz": 2095.544117647059,
+          "energy_j": 56.35002890964995
+        }
+      },
+      "sensitivity": 11.207020813640375,
+      "service_top_s": 1.188588700024411
+    },
+    {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 16,
+      "prompt_tokens": 1277,
+      "new_tokens": 32,
+      "per_clock": {
+        "180": {
+          "batch_time_s": 23.885242099990137,
+          "power_w": 11.871944154877141,
+          "util_pct": 99.7475800446761,
+          "clock_mhz": 179.8332092330603,
+          "energy_j": 283.56426033680333
+        },
+        "1147": {
+          "batch_time_s": 3.2334419999970123,
+          "power_w": 30.904711956521737,
+          "util_pct": 96.75,
+          "clock_mhz": 1140,
+          "energy_j": 99.92859363802722
+        },
+        "2122": {
+          "batch_time_s": 1.9927739999839105,
+          "power_w": 55.27752678571429,
+          "util_pct": 94.6875,
+          "clock_mhz": 2096,
+          "energy_j": 110.15561816198561
+        }
+      },
+      "sensitivity": 11.985926201457358,
+      "service_top_s": 1.9927739999839105
+    }
+  ],
+  "chosen": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "batch_size": 16,
+    "prompt_tokens": 1277,
+    "new_tokens": 32,
+    "per_clock": {
+      "180": {
+        "batch_time_s": 23.885242099990137,
+        "power_w": 11.871944154877141,
+        "util_pct": 99.7475800446761,
+        "clock_mhz": 179.8332092330603,
+        "energy_j": 283.56426033680333
+      },
+      "1147": {
+        "batch_time_s": 3.2334419999970123,
+        "power_w": 30.904711956521737,
+        "util_pct": 96.75,
+        "clock_mhz": 1140,
+        "energy_j": 99.92859363802722
+      },
+      "2122": {
+        "batch_time_s": 1.9927739999839105,
+        "power_w": 55.27752678571429,
+        "util_pct": 94.6875,
+        "clock_mhz": 2096,
+        "energy_j": 110.15561816198561
+      }
+    },
+    "sensitivity": 11.985926201457358,
+    "service_top_s": 1.9927739999839105,
+    "base_rate": 2.4
+  }
+}

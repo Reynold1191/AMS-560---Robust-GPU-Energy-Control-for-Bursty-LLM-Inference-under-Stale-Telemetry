@@ -1,0 +1,80 @@
+{
+  "rule": "SLO = ceil_0.5(1.5 x worst per-seed P95 at top clock)",
+  "slo_target_s": 6.0,
+  "budget_ratio": 0.05,
+  "top_clock_mhz": 2122,
+  "static_efficient_mhz": 1635,
+  "feasible": true,
+  "clock_sensitivity": 19.316297877346084,
+  "top_clock_util_pct": 48.617280338221185,
+  "p95_monotonic": true,
+  "usable_clocks": [
+    180,
+    667,
+    1147,
+    1635,
+    2122
+  ],
+  "per_clock": [
+    {
+      "clock_mhz": 180,
+      "n_seeds": 3,
+      "p95_mean_s": 137.3355267177103,
+      "mean_service_s": 22.987501665690484,
+      "j_per_token": 0.76097130190641,
+      "mean_power_w": 11.759285516919965,
+      "mean_util_pct": 99.70507889466153,
+      "clock_tracking_pct": 100.0,
+      "miss_rate_at_slo": 1.0
+    },
+    {
+      "clock_mhz": 667,
+      "n_seeds": 3,
+      "p95_mean_s": 29.018681900711574,
+      "mean_service_s": 4.097235290305634,
+      "j_per_token": 0.37410500710031336,
+      "mean_power_w": 21.527997887962794,
+      "mean_util_pct": 90.32401640631953,
+      "clock_tracking_pct": 100.0,
+      "miss_rate_at_slo": 0.7160796008484734
+    },
+    {
+      "clock_mhz": 1147,
+      "n_seeds": 3,
+      "p95_mean_s": 11.028002341918182,
+      "mean_service_s": 2.100069639812979,
+      "j_per_token": 0.37708215846941373,
+      "mean_power_w": 22.599718612736297,
+      "mean_util_pct": 68.51138892346724,
+      "clock_tracking_pct": 100.0,
+      "miss_rate_at_slo": 0.3462070501644828
+    },
+    {
+      "clock_mhz": 1635,
+      "n_seeds": 3,
+      "p95_mean_s": 5.154985478070254,
+      "mean_service_s": 1.5047271316937796,
+      "j_per_token": 0.4144741089800308,
+      "mean_power_w": 24.87648500551988,
+      "mean_util_pct": 55.61531190678332,
+      "clock_tracking_pct": 100.0,
+      "miss_rate_at_slo": 0.046236559139784944
+    },
+    {
+      "clock_mhz": 2122,
+      "n_seeds": 3,
+      "p95_mean_s": 3.366792854076872,
+      "mean_service_s": 1.1900573190398944,
+      "j_per_token": 0.4961451196167405,
+      "mean_power_w": 29.650082284123144,
+      "mean_util_pct": 48.617280338221185,
+      "clock_tracking_pct": 100.0,
+      "miss_rate_at_slo": 0.0
+    }
+  ],
+  "blocking": [],
+  "warnings": [
+    "Mean GPU utilisation at 2122 MHz is 49% (< 50%). Energy will be dominated by idle power; consider a higher --base-rate."
+  ],
+  "ok": true
+}

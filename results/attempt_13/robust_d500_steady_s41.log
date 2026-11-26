@@ -1,0 +1,17 @@
+2026-11-26 00:23:47  INFO      run_experiment  Run log: D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_13\robust_d500_steady_s41.log
+2026-11-26 00:23:47  INFO      run_experiment  Capacity floor (margin 1.25): 180 MHz=0.67 req/s, 667 MHz=3.10 req/s, 1147 MHz=4.95 req/s, 1635 MHz=6.52 req/s, 2122 MHz=7.94 req/s
+2026-11-26 00:23:47  INFO      run_experiment  Starting run_id=robust_d500_steady_s41  controller=robust  delay=500 ms  workload=steady  SLO=5.00 s  budget=5%  clocks=[180, 667, 1147, 1635, 2122]
+2026-11-26 00:23:47  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 00:23:47  INFO      run_experiment  Start clock locked at 1147 MHz
+2026-11-26 00:23:47  INFO      telemetry  TelemetrySampler started (poll=100 ms)
+2026-11-26 00:23:47  INFO      llm_worker  Warming up GPU (3 dummy requests) …
+2026-11-26 00:23:48  INFO      llm_worker  Warm-up complete
+2026-11-26 00:23:48  INFO      load_generator  LoadGenerator started (workload=steady, base_rate=1.75 rps)
+2026-11-26 00:23:48  INFO      llm_worker  LLMWorker started (batch_size=16)
+2026-11-26 00:23:58  INFO      run_experiment  Warm-up complete (10.0 s)
+2026-11-26 00:23:59  INFO      gpu_clock  Locking graphics clock → 667 MHz
+2026-11-26 00:25:48  INFO      run_experiment  Draining queue …
+2026-11-26 00:25:48  INFO      load_generator  LoadGenerator stopped (191 requests created)
+2026-11-26 00:25:49  INFO      llm_worker  LLMWorker stopped (191 requests completed)
+2026-11-26 00:25:49  INFO      telemetry  TelemetrySampler stopped (1172 samples collected)
+2026-11-26 00:25:49  INFO      gpu_clock  Resetting graphics clock to driver default

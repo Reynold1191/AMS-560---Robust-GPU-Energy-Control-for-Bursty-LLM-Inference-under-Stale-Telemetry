@@ -1,0 +1,20 @@
+2026-11-26 00:56:09  INFO      run_experiment  Run log: D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_13\naive_slo_d1250_sharp_burst_s41.log
+2026-11-26 00:56:09  INFO      run_experiment  Capacity floor (margin 1.25): 180 MHz=0.67 req/s, 667 MHz=3.10 req/s, 1147 MHz=4.95 req/s, 1635 MHz=6.52 req/s, 2122 MHz=7.94 req/s
+2026-11-26 00:56:09  INFO      run_experiment  Starting run_id=naive_slo_d1250_sharp_burst_s41  controller=naive_slo  delay=1250 ms  workload=sharp_burst  SLO=5.00 s  budget=5%  clocks=[180, 667, 1147, 1635, 2122]
+2026-11-26 00:56:09  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 00:56:09  INFO      run_experiment  Start clock locked at 1147 MHz
+2026-11-26 00:56:09  INFO      telemetry  TelemetrySampler started (poll=100 ms)
+2026-11-26 00:56:09  INFO      llm_worker  Warming up GPU (3 dummy requests) …
+2026-11-26 00:56:11  INFO      llm_worker  Warm-up complete
+2026-11-26 00:56:11  INFO      load_generator  LoadGenerator started (workload=sharp_burst, base_rate=1.75 rps)
+2026-11-26 00:56:11  INFO      llm_worker  LLMWorker started (batch_size=16)
+2026-11-26 00:56:21  INFO      run_experiment  Warm-up complete (10.0 s)
+2026-11-26 00:56:22  INFO      gpu_clock  Locking graphics clock → 667 MHz
+2026-11-26 00:57:05  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 00:57:06  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 00:57:08  INFO      gpu_clock  Locking graphics clock → 2122 MHz
+2026-11-26 00:58:11  INFO      run_experiment  Draining queue …
+2026-11-26 00:58:11  INFO      load_generator  LoadGenerator stopped (303 requests created)
+2026-11-26 00:58:11  INFO      llm_worker  LLMWorker stopped (303 requests completed)
+2026-11-26 00:58:11  INFO      telemetry  TelemetrySampler stopped (1166 samples collected)
+2026-11-26 00:58:11  INFO      gpu_clock  Resetting graphics clock to driver default

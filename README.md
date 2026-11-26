@@ -174,8 +174,14 @@ python dashboard/serve.py --attempt results/attempt_13 --rebuild   # a newer att
 Interactive pages: overview and conclusions, naive vs robust per condition,
 a second-by-second run explorer (true vs delayed signals, clock, power,
 per-request latency), ablation, testbed characterisation, simulation, report
-figures, and a team & code guide. Needs only Python; Plotly is vendored in
-`dashboard/vendor/`. The packed data for attempt_12 is in `dashboard/data/`.
+figures, a 3-seed replication page, and a team & code guide. Needs only
+Python; Plotly is vendored in `dashboard/vendor/`. The packed data for
+attempt_12 and the pooled repeats is in `dashboard/data/`. To refresh the
+replication page after more repeats:
+
+```powershell
+python dashboard/build_replication.py --attempts attempt_13 attempt_14 attempt_15
+```
 
 ### Final results
 
@@ -184,6 +190,14 @@ telemetry delay on a sharp burst, burst-phase SLO misses fell from 11.7 %
 (naive) to 2.2 % (robust). Robust also used 5-6 % less energy on bursty traffic
 and 16-18 % less than static_high. There was no difference on steady or ramp
 traffic. These are single-seed GPU results; the 20-seed simulator agrees.
+
+The 3-seed repeats confirm this at the run level; see
+[`CONCLUSIONS_attempt_13_14.md`](CONCLUSIONS_attempt_13_14.md). Over 6 paired
+replicates (attempt_13 and attempt_14, seeds 41-43), burst-phase misses at
+2.5 s fell from 49.6 % (naive) to 5.6 % (robust), lower in 22 of 24 sharp-burst
+pairs and never higher (Wilcoxon p = 4e-5). Robust used less energy in 24 of 24
+pairs, -6.1 % on average (sign test p = 1e-7). The cost is on ramp traffic at
+2.5 s, where robust used +3.0 % energy.
 
 ---
 

@@ -293,10 +293,10 @@ window.TEAM = {
     ["Testbed (1.5 min).", "RTX 5060 Laptop, Qwen2.5-0.5B, batch 16, long prompts. Show the Testbed page: the clock really changes latency, and 180 MHz is infeasible."],
     ["Method (2 min).", "DelayBuffer on every input, 4 delay levels, 3 workloads, paired seeds. Show the data-flow diagram above."],
     ["Controllers (2 min).", "naive vs robust. Explain the age-aware forecast and the lag-aware P95 with the run explorer at sharp_burst, 2500 ms."],
-    ["Results (2.5 min).", "Overview: burst misses 11.7 % → 2.2 %, energy −5 to −6 % on bursts, ~17 % vs static_high. Results page for steady and ramp: no difference."],
+    ["Results (2.5 min).", "3-seed replication page: burst misses 49.6 % → 5.6 % at 2.5 s, energy −6.1 % (24/24 pairs lower), 15–17 % vs static_high. Then steady (no difference) and ramp (+3 % at 2.5 s, the honest cost)."],
     ["Ablation (1 min).", "robust_v1 ≈ naive. robust_no_age oscillates. Both mechanisms are needed."],
     ["Scale-out (1 min).", "Simulation page: the simulator matches the hardware, and a fleet of 8 saves 8–13 %."],
-    ["Limits & next steps (1 min).", "One seed per GPU cell. The 3-seed repeat gives significance. The fleet shares one clock policy."],
+    ["Limits & next steps (1 min).", "Seeds repeat across sessions, one burst size, near capacity robust also starts to miss, and the fleet shares one clock policy."],
   ],
 
   glossary: [
@@ -316,7 +316,7 @@ window.TEAM = {
   qa: [
     ["Why not just run at the top clock?", "The dynamic controllers used 11–27 % less energy than static_high, with no SLO violations at low delay."],
     ["Why is the delay injected instead of real?", "Real delays on one laptop are small and fixed. Injecting them lets us sweep 0–2.5 s, the range seen in cluster telemetry pipelines, while everything else stays identical."],
-    ["Is one seed enough?", "For direction yes, for significance no. naive's degradation with delay is replicated across attempts 8–12 and the simulator. The robust-vs-naive gap needs the 3-seed repeat."],
+    ["Is one seed enough?", "No, so we repeated it. attempt_13 and attempt_14 ran the full matrix with 3 paired seeds each (210 runs). Robust used less energy in 24/24 sharp-burst pairs (sign test p ≈ 1×10⁻⁷) and had fewer burst misses in 22/24, never more (Wilcoxon p ≈ 4×10⁻⁵)."],
     ["Why does robust save energy if it is more cautious?", "Because the naive controller wastes energy after the burst: its 60 s P95 still shows the burst, so it stays at 2122 MHz with an empty queue. Robust recognises there is no backlog and steps down."],
     ["Why does robust_no_age do so badly at 2500 ms?", "It forecasts only 0.7 s ahead while its data is 2.5 s old, so it reacts late, overshoots, and oscillates (16 clock changes)."],
     ["Why a fixed 5 s SLO?", "Calibrated SLOs varied 4–6 s across attempts, which made results incomparable. 5 s is within that range and fixed before the final runs."],
@@ -336,9 +336,9 @@ window.DELIVERABLES = {
     ["D4", "Baseline implementations", "done",
       "static_high and naive_slo were run on the GPU and the oracle table was built. The NVIDIA-default and oracle controllers are implemented but were not in the final GPU matrix."],
     ["D5", "Telemetry-age-aware DVFS controller", "done",
-      "robust v2 with tests. On the GPU at 2.5 s lag it cut rush misses from 11.7 % to 2.2 %."],
+      "robust v2 with tests. On the GPU at 2.5 s lag it cut rush misses from 49.6 % to 5.6 % (pooled over 6 replicates) and used 6 % less energy."],
     ["D6", "Failure-boundary evaluation and ablation", "partial",
-      "Ablation done (robust_v1, robust_no_age). The failure map covers delay × workload at one burst size (×4). One seed; the 3-seed repeat is pending."],
+      "Ablation done (robust_v1, robust_no_age) and replicated over 3 seeds × 2 sessions. The failure map still covers delay × workload at one burst size (×4)."],
   ],
   readme: [
     ["D1", "Experiment harness + guaranteed clock reset", "done", "run_experiment.py, run_demo.py; clock reset in a finally block."],

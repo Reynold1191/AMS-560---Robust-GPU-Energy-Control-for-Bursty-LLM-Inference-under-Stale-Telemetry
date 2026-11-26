@@ -95,7 +95,8 @@ function renderIntro() {
   $("#deliv-sum").innerHTML =
     `<div><span class="big">${n(DL.proposal)} / ${DL.proposal.length}</span> proposal deliverables done, the rest partial</div>` +
     `<div><span class="big">${n(DL.readme)} / ${DL.readme.length}</span> README checklist items done, the rest partial</div>` +
-    `<div class="muted">Remaining: a 3-seed GPU repeat for significance, and a burst-size axis for the failure map.</div>`;
+    `<div class="muted">Done since attempt_12: two 3-seed GPU repeats (attempt_13, attempt_14) give run-level significance.
+      Remaining: a burst-size axis for the failure map (the third repeat, attempt_15, is still running).</div>`;
 }
 
 /* ───────────── Overview ───────────── */
@@ -143,11 +144,10 @@ function renderOverview() {
     ["yes", "Concluded", "<b>Stale telemetry hurts a reactive controller.</b> naive's burst-phase misses rise 0 → 0 → 2.9 → 11.7 % as the delay goes 0 → 2500 ms. attempt_8–11 (8 seeds, ≈0.8 → 12 %) and the 20-seed simulator show the same."],
     ["yes", "Concluded", "<b>DVFS pays off on this testbed.</b> Every dynamic controller used 11–27 % less energy than static_high. There were no SLO violations at 0–500 ms. This held in every attempt from 8 to 12."],
     ["yes", "Concluded", "<b>Robust's lag-aware rule works as designed.</b> After the burst, naive keeps 2122 MHz to the end of the run because its 60 s P95 window still remembers the burst. Robust sees an empty queue and returns to 667 MHz (CAPACITY_DOWN). Its time at the top clock falls from ≈56 % to ≈26 %."],
-    ["trend", "Strong trend", "<b>Robust cuts burst misses under stale telemetry.</b> At 2500 ms it had 3 misses against 16 for naive, out of 137 burst requests. Fisher's exact test gives p ≈ 0.003 at the request level. That is one burst per controller, so it is not yet a seed-level result."],
-    ["trend", "Trend", "<b>Robust uses less energy on bursty traffic.</b> It was 5–6 % lower in 3 of 4 delays and +1.8 % at 500 ms. Each cell is n = 1, and run-to-run noise is about ±2 %."],
-    ["trend", "Trend", "<b>Each robust mechanism contributes (ablation).</b> At 2500 ms the burst misses were 11.7 % for naive, 9.5 % for robust_v1, 13.1 % for robust_no_age (which also oscillated, with 16 clock changes) and 2.2 % for robust."],
-    ["no", "Not shown", "<b>No difference on steady or ramp.</b> The gap is ±1.5 % on steady and −2.6 to +4.7 % on ramp, with no misses for either controller. This is within noise for one seed."],
-    ["no", "Needs data", "<b>Seed-level significance.</b> It needs the 3-seed repeat (<code>python run_demo.py --repeat-3seed 1</code>), which gives 4 paired seeds per cell."],
+    ["yes", "Replicated", "<b>Robust cuts burst misses under stale telemetry.</b> Here at 2500 ms: 3 misses against 16 for naive, out of 137 burst requests (Fisher p ≈ 0.003). The 3-seed repeats confirm it at the run level: 49.6 % → 5.6 % pooled at 2500 ms, lower in 22/24 replicate pairs and never higher. See <a href=\"#replication\">3-seed replication</a>."],
+    ["yes", "Replicated", "<b>Robust uses less energy on bursty traffic.</b> Here 5–6 % lower in 3 of 4 delays and +1.8 % at 500 ms (n = 1). In the repeats it was lower in 24/24 pairs, −6.1 % on average (sign test p ≈ 1×10⁻⁷); the 500 ms outlier did not repeat (−7.9 %)."],
+    ["yes", "Replicated", "<b>Each robust mechanism contributes (ablation).</b> Here at 2500 ms: naive 11.7 %, robust_v1 9.5 %, robust_no_age 13.1 % (16 clock changes), robust 2.2 %. Pooled over the repeats: 49.6 %, 48.9 %, 31.6 % and 5.6 %. robust_v1 ≈ naive; age compensation does most of the work."],
+    ["no", "Cost", "<b>No gain on steady, a small cost on ramp.</b> Here ±1.5 % on steady and −2.6 to +4.7 % on ramp. The repeats show steady is a wash and ramp at 2500 ms costs +3.0 % energy (6/6 pairs, p = 0.015), with no misses for either controller."],
   ];
   $("#conclusions").innerHTML = C.map(([k, b, t]) =>
     `<div class="cl"><span class="badge b-${k}">${b}</span><p>${t}</p></div>`).join("");
@@ -166,8 +166,121 @@ function renderOverview() {
   ].map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
 }
 
+/* ───────────── Replication (data/replication.js, build_replication.py) ───────────── */
+const fmtP = p => p == null ? "–" : p < 1e-4 ? p.toExponential(0).replace("e-", "×10⁻").replace(/⁻(\d+)/, (_, d) => "⁻" + [...d].map(c => "⁰¹²³⁴⁵⁶⁷⁸⁹"[c]).join("")) : p < 0.001 ? "<0.001" : p.toFixed(3);
+const REP = { wl: "sharp_burst" };
+function renderReplication() {
+  const R = window.REPLICATION;
+  if (!R) { $("#page-replication").insertAdjacentHTML("beforeend",
+    '<div class="card"><p>No data/replication.js. Run <code>python dashboard/build_replication.py</code>.</p></div>'); return; }
+  const O = R.overall, ds = [...new Set(R.paired.map(p => p.delay_ms))].sort((a, b) => a - b), dmax = ds[ds.length - 1];
+  const P = (w, d) => R.paired.find(p => p.workload === w && p.delay_ms === d);
+  const nRep = new Set(R.runs.map(r => r.att + "/" + r.seed)).size;
+  $("#rep-atts").textContent = R.attempts.map(a => `${a.name} (base ${a.base_rate} req/s)`).join(" + ") + ` · ${R.runs.length} GPU runs`;
+  const pm = P("sharp_burst", dmax);
+  const sv = R.savings.filter(s => s.controller === "robust" && s.workload === "sharp_burst").map(s => -s.mean);
+  $("#rep-kpis").innerHTML = [
+    [`Burst-phase misses at ${dmax} ms`, `${(pm.bk_n / pm.bn * 100).toFixed(1)}% → <span class="good">${(pm.bk_r / pm.bn * 100).toFixed(1)}%</span>`,
+      `naive → robust, ${pm.bk_n} → ${pm.bk_r} of ${pm.bn} burst requests`],
+    ["Energy on sharp_burst", `<span class="good">${sgn(O.dj_mean)}%</span>`,
+      `robust lower in <b>${O.energy_lower}/${O.pairs}</b> pairs (sign test p = ${fmtP(O.p_sign_energy)})`],
+    ["Burst misses, run level", `${O.bm_lower}<small>/${O.pairs} lower</small>`,
+      `${O.bm_tie} ties, ${O.bm_higher} higher; mean ${sgn(O.dbm_mean)} pp (Wilcoxon p = ${fmtP(O.p_wil_bm)})`],
+    ["Replicates", `${nRep}<small> per condition</small>`, `${R.attempts.length} sessions × ${R.attempts[0].seeds.length} paired seeds, 0 unfinished requests`],
+  ].map(([l, v, s]) => `<div class="kpi"><div class="lab">${l}</div><div class="val">${v}</div><div class="sub">${s}</div></div>`).join("");
+
+  // Burst misses: pooled line + replicate dots, all four sharp_burst controllers.
+  const sb = R.runs.filter(r => r.workload === "sharp_burst");
+  const jit = { naive_slo: -60, robust_v1: -20, robust_no_age: 20, robust: 60 };
+  const tr = [];
+  ABLATION.forEach(c => {
+    const main = PRIMARY.includes(c);
+    const ab = ds.map(d => R.ablation.find(a => a.controller === c && a.delay_ms === d));
+    tr.push({ x: ds, y: ab.map(a => a.bk / a.bn * 100), name: c, mode: "lines+markers", legendgroup: c,
+      line: { color: CTRL[c].color, width: main ? 3 : 1.5, dash: main ? "solid" : "dot" }, marker: { size: main ? 9 : 6 },
+      visible: main ? true : "legendonly", hovertemplate: `${c} pooled<br>%{x} ms: %{y:.1f}%<extra></extra>` });
+    const rs = sb.filter(r => r.controller === c);
+    tr.push({ x: rs.map(r => r.delay_ms + jit[c]), y: rs.map(r => r.bmiss), mode: "markers", legendgroup: c, showlegend: false,
+      visible: main ? true : "legendonly", marker: { color: CTRL[c].color, size: 6, opacity: 0.45 },
+      text: rs.map(r => `${r.att} s${r.seed}`), hovertemplate: `${c} %{text}<br>%{y:.1f}%<extra></extra>` });
+  });
+  plot("rep-miss", tr, {
+    xaxis: { title: "telemetry delay (ms)", tickvals: ds, gridcolor: css("--line") },
+    yaxis: { title: "burst-phase miss (%)", gridcolor: css("--line"), rangemode: "tozero" },
+    shapes: [{ type: "line", xref: "paper", x0: 0, x1: 1, y0: 5, y1: 5, line: { color: css("--bad"), dash: "dash", width: 1 } }],
+    annotations: [{ xref: "paper", x: 0.01, y: 5, text: "5% budget", showarrow: false, yshift: 9, font: { color: css("--bad"), size: 11 } }],
+  });
+  seg($("#rep-wl"), WORKLOADS, REP.wl, v => { REP.wl = v; drawRepDj(); });
+  drawRepDj();
+
+  const ab = (c, d) => R.ablation.find(a => a.controller === c && a.delay_ms === d);
+  const pct = a => (a.bk / a.bn * 100).toFixed(1);
+  const rmp = P("ramp", dmax), sv2 = R.savings.filter(s => s.controller === "robust");
+  const svr = w => { const v = sv2.filter(s => s.workload === w).map(s => -s.mean); const a = Math.min(...v).toFixed(0), b = Math.max(...v).toFixed(0); return a === b ? `≈${a} %` : `${a}–${b} %`; };
+  const C = [
+    ["yes", "Concluded", `<b>Stale telemetry breaks the reactive controller on bursts.</b> naive's pooled burst-phase misses rise ${ds.map(d => pct(ab("naive_slo", d))).join(" → ")} % as the delay goes ${ds.join(" → ")} ms.`],
+    ["yes", "Concluded", `<b>Robust cuts burst misses by ${Math.round(Math.min(...ds.map(d => 1 - P("sharp_burst", d).bk_r / P("sharp_burst", d).bk_n)) * 100)}–${Math.round(Math.max(...ds.map(d => 1 - P("sharp_burst", d).bk_r / P("sharp_burst", d).bk_n)) * 100)} % at every delay.</b> Lower in ${O.bm_lower} of ${O.pairs} replicate pairs, never higher (Wilcoxon p = ${fmtP(O.p_wil_bm)}). At ${dmax} ms: ${pct(ab("naive_slo", dmax))} % → ${pct(ab("robust", dmax))} %.`],
+    ["yes", "Concluded", `<b>…and uses less energy at the same time.</b> ${sgn(O.dj_mean)} % J/token on sharp_burst, lower in all ${O.energy_lower}/${O.pairs} pairs (sign test p = ${fmtP(O.p_sign_energy)}). It spends ≈${Math.round(P("sharp_burst", dmax).top_r)} % of the run at 2122 MHz against ≈${Math.round(P("sharp_burst", dmax).top_n)} % for naive.`],
+    ["yes", "Concluded", `<b>Both v2 mechanisms are needed (ablation).</b> robust_v1 ≈ naive (${pct(ab("robust_v1", dmax))} % at ${dmax} ms, p = ${fmtP(ab("robust_v1", dmax).p_vs_naive)}). Dropping age compensation (robust_no_age) keeps only part of the gain (${pct(ab("robust_no_age", dmax))} %) and oscillates (${ab("robust_no_age", dmax).chg} clock changes vs ${ab("robust", dmax).chg}).`],
+    ["yes", "Concluded", `<b>DVFS pays off.</b> Robust saves ${svr("sharp_burst")} vs static_high on bursts, ${svr("ramp")} on ramp and ${svr("steady")} on steady.`],
+    ["no", "Cost", `<b>No gain on smooth load, a small cost on ramp.</b> Steady is a wash. On ramp at ${dmax} ms robust uses ${sgn(O.ramp_dmax_dj)} % energy (higher in ${O.ramp_dmax_higher}/${rmp.k} pairs, p = ${fmtP(rmp.p_dj)}): it plans ahead for a rise naive handles anyway.`],
+    ["trend", "Limit", "<b>Near capacity robust starts to miss too.</b> On seed 43 at base 1.80 req/s it reaches 11–26 % burst misses at 1250–2500 ms (naive 65–95 %). The failure map still uses one burst size (×4)."],
+  ];
+  $("#rep-concl").innerHTML = C.map(([k, b, t]) => `<div class="cl"><span class="badge b-${k}">${b}</span><p>${t}</p></div>`).join("");
+
+  const rows = [...R.paired].sort((a, b) => WORKLOADS.indexOf(a.workload) - WORKLOADS.indexOf(b.workload) || a.delay_ms - b.delay_ms);
+  table($("#rep-paired"), [
+    { k: "workload", h: "workload", l: true }, { k: "delay_ms", h: "delay ms" }, { k: "k", h: "pairs" },
+    { k: "dj_mean", h: "Δ energy %", f: (v, r) => `${sgn(v)} ± ${r.dj_sd.toFixed(1)}`, cls: v => v > 0.5 ? "pos" : v < -0.5 ? "neg" : "" },
+    { k: "dj_lower", h: "robust cheaper", f: (v, r) => `${v}/${r.k}` }, { k: "p_dj", h: "p (t)", f: fmtP },
+    { k: "bk_n", h: "burst miss naive", f: (v, r) => v == null ? "–" : `${v}/${r.bn} (${(v / r.bn * 100).toFixed(1)}%)` },
+    { k: "bk_r", h: "burst miss robust", f: (v, r) => v == null ? "–" : `${v}/${r.bn} (${(v / r.bn * 100).toFixed(1)}%)`, cls: (v, r) => v != null && v < r.bk_n ? "neg" : "" },
+    { k: "p_fisher", h: "p (Fisher)", f: fmtP }, { k: "p_wil", h: "p (Wilcoxon)", f: fmtP },
+    { k: "miss_n", h: "run miss % naive", f: v => v.toFixed(2) }, { k: "miss_r", h: "run miss % robust", f: v => v.toFixed(2) },
+  ], rows);
+
+  const reps = [...new Set(sb.map(r => r.att + "|" + r.seed))].sort();
+  const cell = (a, s, c, d) => (sb.find(r => r.att === a && r.seed === +s && r.controller === c && r.delay_ms === d) || {}).bmiss;
+  $("#rep-grid").innerHTML = "<thead><tr><th class='l'>replicate</th>" + ds.map(d => `<th>${d} ms</th>`).join("") + "</tr></thead><tbody>" +
+    reps.map(k => { const [a, s] = k.split("|"); return `<tr><td class="l">${a.replace("attempt_", "a")} · s${s}</td>` +
+      ds.map(d => { const n = cell(a, s, "naive_slo", d), r = cell(a, s, "robust", d);
+        return `<td>${n.toFixed(1)} → <b class="${r < n ? "good" : ""}">${r.toFixed(1)}</b></td>`; }).join("") + "</tr>"; }).join("") + "</tbody>";
+
+  $("#rep-abl").innerHTML = "<thead><tr><th class='l'>delay</th>" + ABLATION.map(c => `<th style="color:${CTRL[c].color}">${c}</th>`).join("") + "</tr></thead><tbody>" +
+    ds.map(d => `<tr><td class="l">${d} ms</td>` + ABLATION.map(c => { const a = ab(c, d);
+      return `<td>${a.bk}/${a.bn}<div class="note">${pct(a)} %${a.p_vs_naive != null ? " · p " + fmtP(a.p_vs_naive) : ""}</div></td>`; }).join("") + "</tr>").join("") +
+    `<tr><td class="l">J/token @${dmax}</td>` + ABLATION.map(c => `<td>${ab(c, dmax).j_per_token.toFixed(3)}</td>`).join("") + "</tr>" +
+    `<tr><td class="l">clock changes @${dmax}</td>` + ABLATION.map(c => `<td>${ab(c, dmax).chg}</td>`).join("") + "</tr></tbody>";
+
+  $("#rep-save").innerHTML = "<thead><tr><th class='l'>controller</th>" + WORKLOADS.map(w => `<th colspan="${ds.length}">${w}</th>`).join("") +
+    "</tr><tr><th></th>" + WORKLOADS.map(() => ds.map(d => `<th>${d}</th>`).join("")).join("") + "</tr></thead><tbody>" +
+    PRIMARY.map(c => `<tr><td class="l" style="color:${CTRL[c].color}"><b>${c}</b></td>` + WORKLOADS.map(w => ds.map(d => {
+      const s = R.savings.find(x => x.controller === c && x.workload === w && x.delay_ms === d);
+      return `<td title="min ${s.min}, max ${s.max}">${s.mean.toFixed(1)}</td>`; }).join("")).join("") + "</tr>").join("") + "</tbody>";
+}
+function drawRepDj() {
+  const R = window.REPLICATION, ds = [...new Set(R.paired.map(p => p.delay_ms))].sort((a, b) => a - b);
+  const key = r => `${r.att}|${r.seed}|${r.delay_ms}`;
+  const nv = Object.fromEntries(R.runs.filter(r => r.controller === "naive_slo" && r.workload === REP.wl).map(r => [key(r), r]));
+  const rb = R.runs.filter(r => r.controller === "robust" && r.workload === REP.wl);
+  const pts = rb.map(r => ({ d: r.delay_ms, v: (r.j_per_token / nv[key(r)].j_per_token - 1) * 100, t: `${r.att} s${r.seed}`, s: r.seed }));
+  const seeds = [...new Set(pts.map(p => p.s))].sort();
+  const sym = ["circle", "diamond", "square", "triangle-up"];
+  const tr = seeds.map((s, i) => { const q = pts.filter(p => p.s === s);
+    return { x: q.map(p => p.d + (i - 1) * 45), y: q.map(p => p.v), mode: "markers", name: "seed " + s,
+      marker: { size: 9, symbol: sym[i % 4], color: CTRL.robust.color, opacity: 0.75, line: { width: 1, color: css("--ink-2") } },
+      text: q.map(p => p.t), hovertemplate: "%{text}<br>%{y:.1f}%<extra></extra>" }; });
+  const pm = ds.map(d => R.paired.find(p => p.workload === REP.wl && p.delay_ms === d));
+  tr.push({ x: ds, y: pm.map(p => p.dj_mean), mode: "lines+markers", name: "mean", line: { color: css("--ink-2"), width: 2 },
+    marker: { size: 11, symbol: "line-ew-open", line: { width: 3 } }, hovertemplate: "mean %{y:.2f}%<extra></extra>" });
+  plot("rep-dj", tr, {
+    xaxis: { title: "telemetry delay (ms)", tickvals: ds, gridcolor: css("--line") },
+    yaxis: { title: "Δ J/token, robust vs naive (%)", gridcolor: css("--line"), zeroline: true, zerolinecolor: css("--ink-2"), zerolinewidth: 1 },
+  });
+}
+
 /* ───────────── Results ───────────── */
-const RS = { wl: "sharp_burst", metric: "j_per_token", abl: false };
+const RS ={ wl: "sharp_burst", metric: "j_per_token", abl: false };
 function renderResults() {
   seg($("#res-workload"), WORKLOADS, RS.wl, v => { RS.wl = v; drawResults(); });
   const sel = $("#res-metric");
@@ -335,7 +448,7 @@ function renderAblation() {
     <li><b>Telemetry age drives the reliability result.</b> At ${dmax} ms, robust_no_age forecasts over only the 0.7 s settle time, reacts late,
       then over-corrects (${run("robust_no_age", "sharp_burst", dmax).n_clock_changes} clock changes). Its misses are as bad as naive's.
       The full robust controller forecasts over age + settle and holds misses at ${(run("robust", "sharp_burst", dmax).burst_miss_rate * 100).toFixed(1)} %.</li>
-    <li><b>Caveat.</b> This is one seed per cell. The 20-seed simulator gives the same order at 2500 ms (whole-run miss): naive 13.5 %, robust_no_age 12.2 %, robust 6.6 %.</li></ul>`;
+    <li><b>Replicated.</b> This page is one seed per cell. Pooled over the 3-seed repeats (6 replicates) the order is the same at 2500 ms: naive 49.6 %, robust_v1 48.9 %, robust_no_age 31.6 %, robust 5.6 % burst misses. See <a href="#replication">3-seed replication</a>.</li></ul>`;
 }
 
 /* ───────────── Testbed ───────────── */
@@ -456,7 +569,7 @@ function drawFiles() {
 }
 
 /* ───────────── routing ───────────── */
-const RENDER = { intro: renderIntro, overview: renderOverview, results: renderResults, explorer: renderExplorer, ablation: renderAblation,
+const RENDER = { intro: renderIntro, overview: renderOverview, replication: renderReplication, results: renderResults, explorer: renderExplorer, ablation: renderAblation,
   testbed: renderTestbed, simulation: renderSimulation, figures: renderFigures, team: renderTeam };
 const done = new Set();
 function route() {
@@ -484,7 +597,8 @@ function loadData(attempt) {
 loadData(ATTEMPT).then(d => {
   D = d;
   document.querySelectorAll(".attempt-name").forEach(e => e.textContent = d.attempt);
-  $("#side-foot").innerHTML = `Data: results/${d.attempt}<br>${d.meta.n_runs} GPU runs · seed ${d.meta.seeds.join(", ")}`;
+  $("#side-foot").innerHTML = `Data: results/${d.attempt}<br>${d.meta.n_runs} GPU runs · seed ${d.meta.seeds.join(", ")}` +
+    (window.REPLICATION ? `<br>Replication: ${window.REPLICATION.attempts.map(a => a.name).join(", ")}<br>${window.REPLICATION.runs.length} GPU runs · seeds ${window.REPLICATION.attempts[0].seeds.join(", ")}` : "");
   addEventListener("hashchange", route);
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { done.clear(); route(); });
   route();

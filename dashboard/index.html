@@ -19,6 +19,7 @@
   <nav id="nav">
     <a href="#intro" data-page="intro">Introduction</a>
     <a href="#overview" data-page="overview">Overview</a>
+    <a href="#replication" data-page="replication">3-seed replication</a>
     <a href="#results" data-page="results">Results</a>
     <a href="#explorer" data-page="explorer">Run explorer</a>
     <a href="#ablation" data-page="ablation">Ablation</a>
@@ -119,8 +120,23 @@
         <div><b>Quiet and ramp days</b><span>No real difference. Both managers kept every promise and used about the same energy.
           That is expected: there is nothing to react to.</span></div>
       </div>
-      <p class="muted" style="margin-top:10px">Caveat: one seed per condition on the GPU. A 20-seed kitchen simulator shows the same pattern.
-        A 3-seed repeat on the GPU is the remaining step for statistical significance. Details are on the Overview and Results pages.</p>
+      <p class="muted" style="margin-top:10px">attempt_12 had one seed per condition. A 20-seed kitchen simulator showed the same pattern,
+        and the 3-seed repeats below settle it on the real GPU.</p>
+    </div>
+
+    <div class="card">
+      <h3>Did it happen again? (3-seed repeats, attempt_13 + attempt_14)</h3>
+      <div class="three">
+        <div><b class="good">Rush, every board lag</b><span>Over 6 paired replicates (2 sessions × 3 seeds, 881 rush orders per cell) the naive
+          manager was late on 11.7 → 19.2 → 26.2 → 49.6 % of rush orders as the board lag grew 0 → 2.5 s. The robust manager:
+          0.6 → 0.5 → 2.2 → 5.6 %.</span></div>
+        <div><b class="good">Gas bill on rush days</b><span>Robust was cheaper in <b>24 of 24</b> paired rush runs, −6.1 % on average.
+          The chance of that by luck is about 1 in 8 million. Robust still saves 15–27 % against running full blast.</span></div>
+        <div><b>The honest cost</b><span>On ramp days with a 2.5 s-old board robust spends +3 % more gas: it plans for a rise the naive
+          manager copes with anyway. On the busiest seed robust also starts to run late at 1.25–2.5 s lag (11–26 %), still far
+          better than naive (65–95 %).</span></div>
+      </div>
+      <p class="muted" style="margin-top:10px">Full tables and p-values: <a href="#replication">3-seed replication</a>.</p>
     </div>
 
     <div class="card">
@@ -132,6 +148,7 @@
         <div><b>attempt_6–7</b><span>Found controllers dropping to 180 MHz in quiet seconds. Added the capacity floor and in-stack capacity probe.</span></div>
         <div><b>attempt_8–11</b><span>~10 h of repeat runs. naive degrades with lag, but the old robust ≈ naive. Diagnosed why (lagging signals).</span></div>
         <div><b>attempt_12</b><span>Robust v2 (forecast over board age, lag-aware) with a fixed 5 s SLO, ablations and a 20-seed simulator. Robust wins on rushes.</span></div>
+        <div><b>attempt_13–15</b><span>Three full 3-seed repeats (105 runs, ≈4.5 h each). Robust's gains hold in every replicate and become significant.</span></div>
       </div>
     </div>
 
@@ -200,6 +217,65 @@
           <li><b>Metrics</b> integrate NVML power into joules and record every request's latency against the 5 s SLO.</li>
         </ol>
       </div>
+    </div>
+  </section>
+
+  <!-- ───────────── Replication ───────────── -->
+  <section class="page" id="page-replication">
+    <header class="page-head">
+      <p class="eyebrow">Statistical confirmation · <span id="rep-atts"></span></p>
+      <h1>Does the result hold across seeds and sessions?</h1>
+      <p class="lede">attempt_12 had one seed per condition. Here the full 35-condition matrix was run again with three paired
+        seeds (41, 42, 43), twice in separate sessions. Each <b>(attempt, seed)</b> is one paired replicate: naive and robust
+        faced exactly the same arrivals. The two sessions reuse the same seeds, so a seed's traffic is shared across them
+        (base rate differs slightly); read <i>n</i> as 3 workloads measured more than once.</p>
+    </header>
+
+    <div class="kpis" id="rep-kpis"></div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Burst-phase SLO misses vs telemetry delay</h3>
+        <p class="muted">sharp_burst. Line = pooled rate (misses ÷ burst requests), dots = each replicate. Budget 5 %.</p>
+        <div id="rep-miss" class="plot"></div>
+      </div>
+      <div class="card">
+        <h3>Energy change, robust vs naive, per replicate</h3>
+        <p class="muted">(robust − naive) / naive in J/token. Below zero = robust cheaper. Each dot is one paired replicate.</p>
+        <div class="seg" id="rep-wl"></div>
+        <div id="rep-dj" class="plot"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Conclusions after replication</h3>
+      <div id="rep-concl" class="concl"></div>
+    </div>
+
+    <div class="card">
+      <h3>Paired comparison, pooled over replicates</h3>
+      <p class="muted">Δ energy: mean ± SD over replicates, t-test p. Burst misses: summed over replicates, Fisher exact (request level)
+        and Wilcoxon signed-rank on per-replicate rates (run level; with 6 pairs the smallest possible p is 0.031).</p>
+      <div class="table-wrap"><table class="data" id="rep-paired"></table></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h3>Per-replicate burst-phase misses (naive → robust)</h3>
+        <p class="muted">Seed 43 has the largest burst (159–164 arrivals). Even static_high reaches a burst P95 of ≈4.3 s there.</p>
+        <div class="table-wrap"><table class="data" id="rep-grid"></table></div>
+      </div>
+      <div class="card">
+        <h3>Ablation, pooled burst-phase misses</h3>
+        <p class="muted">Misses / burst requests over all replicates; p = Fisher exact vs naive.</p>
+        <div class="table-wrap"><table class="data" id="rep-abl"></table></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Energy saved vs static_high (2122 MHz all run)</h3>
+      <p class="muted">Mean over replicates, same attempt and seed as the reference. Negative = cheaper than static_high.</p>
+      <div class="table-wrap"><table class="data" id="rep-save"></table></div>
     </div>
   </section>
 
@@ -367,6 +443,7 @@
 <div class="lightbox" id="lightbox"><img alt=""></div>
 
 <script src="team.js"></script>
+<script src="data/replication.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

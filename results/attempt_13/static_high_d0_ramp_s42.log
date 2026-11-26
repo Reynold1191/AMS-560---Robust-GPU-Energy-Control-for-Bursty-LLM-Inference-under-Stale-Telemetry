@@ -1,0 +1,16 @@
+2026-11-26 02:11:47  INFO      run_experiment  Run log: D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_13\static_high_d0_ramp_s42.log
+2026-11-26 02:11:47  INFO      run_experiment  Capacity floor (margin 1.25): 180 MHz=0.67 req/s, 667 MHz=3.10 req/s, 1147 MHz=4.95 req/s, 1635 MHz=6.52 req/s, 2122 MHz=7.94 req/s
+2026-11-26 02:11:47  INFO      run_experiment  Starting run_id=static_high_d0_ramp_s42  controller=static_high  delay=0 ms  workload=ramp  SLO=5.00 s  budget=5%  clocks=[180, 667, 1147, 1635, 2122]
+2026-11-26 02:11:47  INFO      gpu_clock  Locking graphics clock → 2122 MHz
+2026-11-26 02:11:47  INFO      run_experiment  Start clock locked at 2122 MHz
+2026-11-26 02:11:47  INFO      telemetry  TelemetrySampler started (poll=100 ms)
+2026-11-26 02:11:47  INFO      llm_worker  Warming up GPU (3 dummy requests) …
+2026-11-26 02:11:49  INFO      llm_worker  Warm-up complete
+2026-11-26 02:11:49  INFO      load_generator  LoadGenerator started (workload=ramp, base_rate=1.75 rps)
+2026-11-26 02:11:49  INFO      llm_worker  LLMWorker started (batch_size=16)
+2026-11-26 02:11:59  INFO      run_experiment  Warm-up complete (10.0 s)
+2026-11-26 02:13:49  INFO      run_experiment  Draining queue …
+2026-11-26 02:13:50  INFO      load_generator  LoadGenerator stopped (399 requests created)
+2026-11-26 02:13:51  INFO      llm_worker  LLMWorker stopped (399 requests completed)
+2026-11-26 02:13:51  INFO      telemetry  TelemetrySampler stopped (1194 samples collected)
+2026-11-26 02:13:51  INFO      gpu_clock  Resetting graphics clock to driver default

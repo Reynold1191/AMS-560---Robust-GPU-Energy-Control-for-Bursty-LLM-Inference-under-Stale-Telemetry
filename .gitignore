@@ -3,5 +3,7 @@ __pycache__/
 .DS_Store
 results/*
 !results/attempt_12/
+!results/attempt_13/
+!results/attempt_14/
 .venv/
 .pytest_cache/

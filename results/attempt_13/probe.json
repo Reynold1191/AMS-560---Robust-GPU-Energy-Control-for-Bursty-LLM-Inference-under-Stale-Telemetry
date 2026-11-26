@@ -1,0 +1,11 @@
+{
+  "clock_mhz": 2122,
+  "probe_rate": 12.04,
+  "n_full_batches": 24,
+  "batch_time_s": 2.014999999955762,
+  "capacity_rps": 7.940446650298396,
+  "bench_batch_time_s": 1.9927739999839105,
+  "burst_peak_frac": 0.9,
+  "burst_multiplier": 4.0,
+  "base_rate": 1.75
+}
