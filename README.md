@@ -13,7 +13,7 @@ AMS 560 * Big Data Systems, Algorithms and Networks * Stony Brook University
 | 2 | **Priyanshi Jain** | Controller interface and dynamic policies |
 | 3 | **Quynh Tran** | Metrics and analysis |
 | 4 | **Yongeun** | Load generation and scale simulation |
-| 5 | **Thai Toan Tran** | GPU testbed and LLM serving (RTX 5060 clock control, NVML telemetry, Qwen2.5 worker), experiment orchestration and integration of all modules, design of the robust v2 controller, trace-driven simulator, and the results dashboard |
+| 5 | **Thai Toan Tran** | GPU testbed and LLM serving, orchestration and integration, robust v2 controller |
 
 ---
 
