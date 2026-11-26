@@ -1,0 +1,30 @@
+2026-11-26 12:57:19  INFO      run_experiment  Run log: D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_15\robust_d500_ramp_s43.log
+2026-11-26 12:57:19  INFO      run_experiment  Capacity floor (margin 1.25): 180 MHz=0.67 req/s, 667 MHz=3.10 req/s, 1147 MHz=4.95 req/s, 1635 MHz=6.56 req/s, 2122 MHz=8.00 req/s
+2026-11-26 12:57:19  INFO      run_experiment  Starting run_id=robust_d500_ramp_s43  controller=robust  delay=500 ms  workload=ramp  SLO=5.00 s  budget=5%  clocks=[180, 667, 1147, 1635, 2122]
+2026-11-26 12:57:19  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 12:57:19  INFO      run_experiment  Start clock locked at 1147 MHz
+2026-11-26 12:57:19  INFO      telemetry  TelemetrySampler started (poll=100 ms)
+2026-11-26 12:57:19  INFO      llm_worker  Warming up GPU (3 dummy requests) …
+2026-11-26 12:57:21  INFO      llm_worker  Warm-up complete
+2026-11-26 12:57:21  INFO      load_generator  LoadGenerator started (workload=ramp, base_rate=1.80 rps)
+2026-11-26 12:57:21  INFO      llm_worker  LLMWorker started (batch_size=16)
+2026-11-26 12:57:31  INFO      run_experiment  Warm-up complete (10.0 s)
+2026-11-26 12:57:32  INFO      gpu_clock  Locking graphics clock → 667 MHz
+2026-11-26 12:57:41  INFO      gpu_clock  Locking graphics clock → 2122 MHz
+2026-11-26 12:57:45  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 12:57:49  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 12:57:54  INFO      gpu_clock  Locking graphics clock → 667 MHz
+2026-11-26 12:58:01  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 12:58:05  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 12:58:22  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 12:58:26  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 12:58:34  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 12:58:45  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 12:58:56  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 12:59:02  INFO      gpu_clock  Locking graphics clock → 2122 MHz
+2026-11-26 12:59:16  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 12:59:21  INFO      run_experiment  Draining queue …
+2026-11-26 12:59:22  INFO      load_generator  LoadGenerator stopped (425 requests created)
+2026-11-26 12:59:23  INFO      llm_worker  LLMWorker stopped (425 requests completed)
+2026-11-26 12:59:23  INFO      telemetry  TelemetrySampler stopped (1116 samples collected)
+2026-11-26 12:59:23  INFO      gpu_clock  Resetting graphics clock to driver default

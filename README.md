@@ -34,8 +34,9 @@ is delayed or stale at the exact moment a workload burst arrives?
 > **Telling the controller how old its data is turns a failing GPU power
 > manager into one that is both safer and cheaper.**
 > On a real RTX 5060 serving an LLM, our age-aware controller cut late
-> requests during traffic bursts by **up to 98 %** and used **6 % less
-> energy** than the reactive baseline, in **every one** of 24 paired burst runs.
+> requests during traffic bursts by **up to 97 %** and used **6 % less
+> energy** than the reactive baseline, in **35 of 36** paired burst runs
+> across three separate GPU sessions.
 
 <p align="center">
   <img src="docs/img/burst_replay.gif" width="640" alt="Replay of one burst with 2.5 s-old telemetry: naive vs robust">
@@ -56,32 +57,32 @@ seed 41; the numbers below are pooled over all runs.)*
 
 | Telemetry delay | Late during burst: naive | Late during burst: **robust** | Reduction |
 |---|---|---|---|
-| 0 ms | 11.7 % | **0.6 %** | **-95 %** |
-| 0.5 s | 19.2 % | **0.5 %** | **-98 %** |
-| 1.25 s | 26.2 % | **2.2 %** | **-92 %** |
-| 2.5 s | 49.6 % | **5.6 %** | **-89 %** |
+| 0 ms | 13.3 % | **1.9 %** | **-86 %** |
+| 0.5 s | 20.1 % | **0.7 %** | **-97 %** |
+| 1.25 s | 27.6 % | **2.5 %** | **-91 %** |
+| 2.5 s | 49.4 % | **5.6 %** | **-89 %** |
 
 As the telemetry gets older, the reactive controller misses more and more of
 the burst: half of all burst requests are late at 2.5 s. The age-aware
 controller stays near the 5 % error budget **at every delay**. It had fewer
-late requests than naive in 22 of 24 paired runs and **never more**
-(Wilcoxon p = 4e-5; request-level Fisher p < 1e-25 at every delay).
+late requests than naive in 32 of 36 paired runs, tied in the other 4, and
+**never had more** (Wilcoxon p = 8e-7; request-level Fisher p < 1e-30 at every delay).
 
 ### 2. Safer *and* cheaper
 
 <p align="center"><img src="docs/img/energy_pairs.png" width="640" alt="Energy change per paired run"></p>
 
 Being careful usually costs energy. Here it saves energy: robust used
-**6.1 % less energy per token** than naive on bursty traffic, and was cheaper
-in **24 of 24** paired runs (sign test p = 1.2e-7). The saving comes from
+**5.9 % less energy per token** than naive on bursty traffic, and was cheaper
+in **35 of 36** paired runs (sign test p = 1e-9). The saving comes from
 *calming down on time*: once the burst is over, robust steps down while naive
-stays at the top clock. With 2.5 s-old telemetry robust spends ~28 % of the
+stays at the top clock. With 2.5 s-old telemetry robust spends ~30 % of the
 run at the top clock, against ~55 % for naive.
 
 <p align="center"><img src="docs/img/savings_vs_max_clock.png" width="600" alt="Energy saved vs max clock"></p>
 
 Compared with simply running the GPU at its maximum clock, robust saves
-**15-17 % on bursty traffic** and **18-27 % on steady and ramp traffic**,
+**15-17 % on bursty traffic** and **18-28 % on steady and ramp traffic**,
 while keeping burst misses close to the 5 % budget.
 
 ### 3. Every piece of the design is needed
@@ -89,15 +90,15 @@ while keeping burst misses close to the 5 % budget.
 <p align="center"><img src="docs/img/ablation.png" width="600" alt="Ablation"></p>
 
 Our first robust design (**v1**) behaves just like naive. Adding lag-aware
-signals helps (**v2 without age**: 31.6 %), but the big win comes from
+signals helps (**v2 without age**: 33.2 %), but the big win comes from
 **forecasting over the telemetry age**: the full controller is at **5.6 %**,
 nearly 6x better than the same controller without age awareness, with half the
-clock changes (7.7 vs 15 per run).
+clock changes (7.8 vs 15.4 per run).
 
 ### How we know it is real
 
-* **210 GPU runs** on real hardware: two independent sessions (attempt_13,
-  attempt_14), each a full 35-condition matrix with **3 paired seeds**, so
+* **315 GPU runs** on real hardware: three independent sessions (attempt_13,
+  attempt_14, attempt_15), each a full 35-condition matrix with **3 paired seeds**, so
   naive and robust always face the *exact same* arrivals.
 * Telemetry delay is injected on **every** controller input (queue, rate,
   P95, error-budget burn, power, clock) at 0 / 0.5 / 1.25 / 2.5 s.
@@ -105,15 +106,15 @@ clock changes (7.7 vs 15 per run).
 * A 20-seed trace-driven simulator agrees in direction, and a simulated fleet
   of 8 GPUs saves **7-14 %** energy on steady and bursty traffic.
 * Full tables, p-values and per-replicate results:
-  [`CONCLUSIONS_attempt_13_14.md`](CONCLUSIONS_attempt_13_14.md) and the
+  [`CONCLUSIONS_attempt_13_15.md`](CONCLUSIONS_attempt_13_15.md) and the
   *3-seed replication* page of the dashboard (`dashboard/index.html`).
 
 ### Scope
 
 The gains are specific to **bursts**, which is what the controller was built
 for. On steady traffic both controllers perform the same, and on a slow ramp
-with 2.5 s-old telemetry robust spends about 3 % more energy because it plans
-for a rise that naive also handles. Results use one burst size (4x); the two
+with 2.5 s-old telemetry robust spends about 2.7 % more energy because it plans
+for a rise that naive also handles. Results use one burst size (4x); the three
 sessions reuse seeds 41-43. Figures are regenerated with
 `python docs/make_readme_figures.py`.
 
@@ -294,8 +295,8 @@ python dashboard/build_replication.py --attempts attempt_13 attempt_14 attempt_1
 ### Final results
 
 Headline results with figures: [Results at a Glance](#results-at-a-glance).
-Details: [`CONCLUSIONS_attempt_13_14.md`](CONCLUSIONS_attempt_13_14.md)
-(3-seed repeats, 210 runs) and
+Details: [`CONCLUSIONS_attempt_13_15.md`](CONCLUSIONS_attempt_13_15.md)
+(three 3-seed repeats, 315 runs) and
 [`CONCLUSIONS_attempt_12.md`](CONCLUSIONS_attempt_12.md) (first single-seed run).
 
 ---

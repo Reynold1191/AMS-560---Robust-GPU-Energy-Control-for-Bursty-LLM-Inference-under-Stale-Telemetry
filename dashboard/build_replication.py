@@ -3,7 +3,7 @@ dashboard/build_replication.py
 Pool several 3-seed repeat attempts into one small file for the dashboard's
 Replication page.
 
-  python dashboard/build_replication.py                                   # attempt_13 attempt_14
+  python dashboard/build_replication.py                                   # attempt_13 attempt_14 attempt_15
   python dashboard/build_replication.py --attempts attempt_13 attempt_14 attempt_15
 
 Writes dashboard/data/replication.js (window.REPLICATION = {...}). Each
@@ -147,7 +147,7 @@ def build(adirs):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Pool 3-seed repeat attempts for the dashboard")
-    ap.add_argument("--attempts", nargs="+", default=["attempt_13", "attempt_14"])
+    ap.add_argument("--attempts", nargs="+", default=["attempt_13", "attempt_14", "attempt_15"])
     args = ap.parse_args(argv)
     adirs = [a if os.path.isdir(a) else os.path.join(ROOT, "results", a) for a in args.attempts]
     data = build(adirs)

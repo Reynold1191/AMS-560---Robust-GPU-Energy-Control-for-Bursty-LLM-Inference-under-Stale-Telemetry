@@ -1,6 +1,8 @@
 # Conclusions from attempt_13 and attempt_14 (3-seed GPU repeats)
 
-attempt_15 (the third repeat) is still running; this note covers the first two.
+> Superseded by [`CONCLUSIONS_attempt_13_15.md`](CONCLUSIONS_attempt_13_15.md), which adds attempt_15 (9 replicates, 315 runs).
+
+This note covers the first two repeats only.
 
 ## Setup
 

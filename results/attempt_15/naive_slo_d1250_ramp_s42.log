@@ -1,0 +1,25 @@
+2026-11-26 10:38:26  INFO      run_experiment  Run log: D:\Master_StonyBrook\Semesters\2_Fall2026\Courses\BigData_Cloud\ams560_gpu_control\results\attempt_15\naive_slo_d1250_ramp_s42.log
+2026-11-26 10:38:26  INFO      run_experiment  Capacity floor (margin 1.25): 180 MHz=0.67 req/s, 667 MHz=3.10 req/s, 1147 MHz=4.95 req/s, 1635 MHz=6.56 req/s, 2122 MHz=8.00 req/s
+2026-11-26 10:38:26  INFO      run_experiment  Starting run_id=naive_slo_d1250_ramp_s42  controller=naive_slo  delay=1250 ms  workload=ramp  SLO=5.00 s  budget=5%  clocks=[180, 667, 1147, 1635, 2122]
+2026-11-26 10:38:26  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 10:38:26  INFO      run_experiment  Start clock locked at 1147 MHz
+2026-11-26 10:38:26  INFO      telemetry  TelemetrySampler started (poll=100 ms)
+2026-11-26 10:38:26  INFO      llm_worker  Warming up GPU (3 dummy requests) …
+2026-11-26 10:38:29  INFO      llm_worker  Warm-up complete
+2026-11-26 10:38:29  INFO      load_generator  LoadGenerator started (workload=ramp, base_rate=1.80 rps)
+2026-11-26 10:38:29  INFO      llm_worker  LLMWorker started (batch_size=16)
+2026-11-26 10:38:39  INFO      run_experiment  Warm-up complete (10.0 s)
+2026-11-26 10:38:41  INFO      gpu_clock  Locking graphics clock → 667 MHz
+2026-11-26 10:39:02  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 10:39:30  INFO      gpu_clock  Locking graphics clock → 667 MHz
+2026-11-26 10:39:31  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 10:39:49  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 10:39:56  INFO      gpu_clock  Locking graphics clock → 2122 MHz
+2026-11-26 10:40:16  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 10:40:24  INFO      gpu_clock  Locking graphics clock → 1147 MHz
+2026-11-26 10:40:25  INFO      gpu_clock  Locking graphics clock → 1635 MHz
+2026-11-26 10:40:29  INFO      run_experiment  Draining queue …
+2026-11-26 10:40:29  INFO      load_generator  LoadGenerator stopped (413 requests created)
+2026-11-26 10:40:30  INFO      llm_worker  LLMWorker stopped (413 requests completed)
+2026-11-26 10:40:30  INFO      telemetry  TelemetrySampler stopped (1117 samples collected)
+2026-11-26 10:40:30  INFO      gpu_clock  Resetting graphics clock to driver default

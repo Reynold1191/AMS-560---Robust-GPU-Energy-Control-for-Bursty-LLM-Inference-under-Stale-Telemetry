@@ -100,8 +100,8 @@ function renderIntro() {
   $("#deliv-sum").innerHTML =
     `<div><span class="big">${n(DL.proposal)} / ${DL.proposal.length}</span> proposal deliverables done, the rest partial</div>` +
     `<div><span class="big">${n(DL.readme)} / ${DL.readme.length}</span> README checklist items done, the rest partial</div>` +
-    `<div class="muted">Done since attempt_12: two 3-seed GPU repeats (attempt_13, attempt_14) give run-level significance.
-      Remaining: a burst-size axis for the failure map (the third repeat, attempt_15, is still running).</div>`;
+    `<div class="muted">Done since attempt_12: three 3-seed GPU repeats (attempt_13, 14, 15; 315 runs) give run-level significance.
+      Remaining: a burst-size axis for the failure map.</div>`;
 }
 
 /* ───────────── Overview ───────────── */
@@ -168,7 +168,7 @@ function renderOverview() {
     ["yes", "Concluded", `<b>Each robust mechanism contributes (ablation).</b> Here at ${dmax} ms: naive ${(ab("naive_slo").burst_miss_rate * 100).toFixed(1)} %, robust_v1 ${(ab("robust_v1").burst_miss_rate * 100).toFixed(1)} %, robust_no_age ${(ab("robust_no_age").burst_miss_rate * 100).toFixed(1)} % (${ab("robust_no_age").n_clock_changes} clock changes), robust ${(ab("robust").burst_miss_rate * 100).toFixed(1)} %.` +
       (REPd ? ` Pooled: ${["naive_slo", "robust_v1", "robust_no_age", "robust"].map(c => pp(c, dmax) + " %").join(", ")}.` : "")],
     ["no", "Cost", `<b>No gain on steady, a small cost on ramp.</b> Here steady is ${rng(djw("steady"))} and ramp ${rng(djw("ramp"))} energy vs naive, with no burst to react to.` +
-      (O ? ` Over all replicates ramp at ${dmax} ms costs ${sgn(O.ramp_dmax_dj)} % (higher in ${O.ramp_dmax_higher} of 6 pairs).` : "")],
+      (O ? ` Over all replicates ramp at ${dmax} ms costs ${sgn(O.ramp_dmax_dj)} % (higher in ${O.ramp_dmax_higher} of ${new Set(REPd.runs.map(r => r.att + r.seed)).size} pairs).` : "")],
   ];
   $("#conclusions").innerHTML = C.map(([k, b, t]) =>
     `<div class="cl"><span class="badge b-${k}">${b}</span><p>${t}</p></div>`).join("");
@@ -241,11 +241,11 @@ function renderReplication() {
   const C = [
     ["yes", "Concluded", `<b>Stale telemetry breaks the reactive controller on bursts.</b> naive's pooled burst-phase misses rise ${ds.map(d => pct(ab("naive_slo", d))).join(" → ")} % as the delay goes ${ds.join(" → ")} ms.`],
     ["yes", "Concluded", `<b>Robust cuts burst misses by ${Math.round(Math.min(...ds.map(d => 1 - P("sharp_burst", d).bk_r / P("sharp_burst", d).bk_n)) * 100)}–${Math.round(Math.max(...ds.map(d => 1 - P("sharp_burst", d).bk_r / P("sharp_burst", d).bk_n)) * 100)} % at every delay.</b> Lower in ${O.bm_lower} of ${O.pairs} replicate pairs, never higher (Wilcoxon p = ${fmtP(O.p_wil_bm)}). At ${dmax} ms: ${pct(ab("naive_slo", dmax))} % → ${pct(ab("robust", dmax))} %.`],
-    ["yes", "Concluded", `<b>…and uses less energy at the same time.</b> ${sgn(O.dj_mean)} % J/token on sharp_burst, lower in all ${O.energy_lower}/${O.pairs} pairs (sign test p = ${fmtP(O.p_sign_energy)}). It spends ≈${Math.round(P("sharp_burst", dmax).top_r)} % of the run at 2122 MHz against ≈${Math.round(P("sharp_burst", dmax).top_n)} % for naive.`],
+    ["yes", "Concluded", `<b>…and uses less energy at the same time.</b> ${sgn(O.dj_mean)} % J/token on sharp_burst, lower in ${O.energy_lower}/${O.pairs} pairs (sign test p = ${fmtP(O.p_sign_energy)}). It spends ≈${Math.round(P("sharp_burst", dmax).top_r)} % of the run at 2122 MHz against ≈${Math.round(P("sharp_burst", dmax).top_n)} % for naive.`],
     ["yes", "Concluded", `<b>Both v2 mechanisms are needed (ablation).</b> robust_v1 ≈ naive (${pct(ab("robust_v1", dmax))} % at ${dmax} ms, p = ${fmtP(ab("robust_v1", dmax).p_vs_naive)}). Dropping age compensation (robust_no_age) keeps only part of the gain (${pct(ab("robust_no_age", dmax))} %) and oscillates (${ab("robust_no_age", dmax).chg} clock changes vs ${ab("robust", dmax).chg}).`],
     ["yes", "Concluded", `<b>DVFS pays off.</b> Robust saves ${svr("sharp_burst")} vs static_high on bursts, ${svr("ramp")} on ramp and ${svr("steady")} on steady.`],
     ["no", "Cost", `<b>No gain on smooth load, a small cost on ramp.</b> Steady is a wash. On ramp at ${dmax} ms robust uses ${sgn(O.ramp_dmax_dj)} % energy (higher in ${O.ramp_dmax_higher}/${rmp.k} pairs, p = ${fmtP(rmp.p_dj)}): it plans ahead for a rise naive handles anyway.`],
-    ["trend", "Limit", "<b>Near capacity robust starts to miss too.</b> On seed 43 at base 1.80 req/s it reaches 11–26 % burst misses at 1250–2500 ms (naive 65–95 %). The failure map still uses one burst size (×4)."],
+    ["trend", "Limit", "<b>Near capacity robust starts to miss too.</b> On seed 43 at base 1.80 req/s (attempt_14, attempt_15) it reaches 8–26 % burst misses at 1250–2500 ms (naive 65–95 %). The failure map still uses one burst size (×4)."],
   ];
   $("#rep-concl").innerHTML = C.map(([k, b, t]) => `<div class="cl"><span class="badge b-${k}">${b}</span><p>${t}</p></div>`).join("");
 

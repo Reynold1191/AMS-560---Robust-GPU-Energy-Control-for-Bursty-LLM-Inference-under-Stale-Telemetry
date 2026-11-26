@@ -70,7 +70,7 @@ def fig_burst_miss(t, path):
     ax.set_title("Late requests during a 4x traffic burst")
     ax.legend(loc="upper left", frameon=False)
     ax.set_ylim(-10, 100)
-    fig.text(0.01, -0.04, "Line: pooled over 6 paired replicates (attempt_13 + attempt_14, seeds 41-43). Dots: individual replicates.",
+    fig.text(0.01, -0.04, f"Line: pooled over {t.groupby(['att', 'seed']).ngroups} paired replicates ({', '.join(sorted(t.att.unique()))}; seeds 41-43). Dots: individual replicates.",
              fontsize=8.5, color="#555")
     fig.savefig(path)
     plt.close(fig)
@@ -213,7 +213,7 @@ def burst_gif(path, att="attempt_13", seed=41, d=2500):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="README figures")
-    ap.add_argument("--attempts", nargs="+", default=["attempt_13", "attempt_14"])
+    ap.add_argument("--attempts", nargs="+", default=["attempt_13", "attempt_14", "attempt_15"])
     args = ap.parse_args(argv)
     os.makedirs(OUT, exist_ok=True)
     t = load(args.attempts)

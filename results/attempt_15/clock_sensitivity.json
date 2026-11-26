@@ -1,0 +1,136 @@
+{
+  "rule": "sensitivity >= 1.5, top-clock batch time <= 8.0 s, highest sensitivity wins; base_rate = 0.3 x top-clock capacity",
+  "clocks": [
+    180,
+    1147,
+    2122
+  ],
+  "prompts_file": "prompts/long_context.jsonl",
+  "candidates": [
+    {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 4,
+      "prompt_tokens": 1267,
+      "new_tokens": 24,
+      "per_clock": {
+        "180": {
+          "batch_time_s": 6.773079900012817,
+          "power_w": 10.478498680738786,
+          "util_pct": 99.27440633245382,
+          "clock_mhz": 179.81002638522426,
+          "energy_j": 70.9717087968227
+        },
+        "1147": {
+          "batch_time_s": 0.9874813999631442,
+          "power_w": 23.902236363636362,
+          "util_pct": 91.25454545454545,
+          "clock_mhz": 1140,
+          "energy_j": 23.60301382661361
+        },
+        "2122": {
+          "batch_time_s": 0.7460158999892883,
+          "power_w": 35.23088095238095,
+          "util_pct": 71.76190476190476,
+          "clock_mhz": 2090.3571428571427,
+          "energy_j": 26.28279736110595
+        }
+      },
+      "sensitivity": 9.079002069674479,
+      "service_top_s": 0.7460158999892883
+    },
+    {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 8,
+      "prompt_tokens": 1267,
+      "new_tokens": 32,
+      "per_clock": {
+        "180": {
+          "batch_time_s": 13.32801339996513,
+          "power_w": 11.02369758064516,
+          "util_pct": 99.63575268817205,
+          "clock_mhz": 179.89247311827958,
+          "energy_j": 146.9239890720019
+        },
+        "1147": {
+          "batch_time_s": 1.866322499990929,
+          "power_w": 27.275514018691588,
+          "util_pct": 94.29906542056075,
+          "clock_mhz": 1140,
+          "energy_j": 50.904905511902115
+        },
+        "2122": {
+          "batch_time_s": 1.2374823999707587,
+          "power_w": 46.52027142857143,
+          "util_pct": 88.47142857142858,
+          "clock_mhz": 2092.885714285714,
+          "energy_j": 57.56801713471968
+        }
+      },
+      "sensitivity": 10.7702650157126,
+      "service_top_s": 1.2374823999707587
+    },
+    {
+      "model": "Qwen/Qwen2.5-0.5B-Instruct",
+      "batch_size": 16,
+      "prompt_tokens": 1277,
+      "new_tokens": 32,
+      "per_clock": {
+        "180": {
+          "batch_time_s": 23.886839199985843,
+          "power_w": 11.456479462285287,
+          "util_pct": 99.76549663928304,
+          "clock_mhz": 179.7729648991785,
+          "energy_j": 273.6590827135489
+        },
+        "1147": {
+          "batch_time_s": 3.2283321999711916,
+          "power_w": 30.482262295081966,
+          "util_pct": 96.78142076502732,
+          "clock_mhz": 1140,
+          "energy_j": 98.40686889518086
+        },
+        "2122": {
+          "batch_time_s": 2.0101235000183806,
+          "power_w": 54.364504347826085,
+          "util_pct": 92.67826086956522,
+          "clock_mhz": 2096.4521739130437,
+          "energy_j": 109.27936775641663
+        }
+      },
+      "sensitivity": 11.883269460691057,
+      "service_top_s": 2.0101235000183806
+    }
+  ],
+  "chosen": {
+    "model": "Qwen/Qwen2.5-0.5B-Instruct",
+    "batch_size": 16,
+    "prompt_tokens": 1277,
+    "new_tokens": 32,
+    "per_clock": {
+      "180": {
+        "batch_time_s": 23.886839199985843,
+        "power_w": 11.456479462285287,
+        "util_pct": 99.76549663928304,
+        "clock_mhz": 179.7729648991785,
+        "energy_j": 273.6590827135489
+      },
+      "1147": {
+        "batch_time_s": 3.2283321999711916,
+        "power_w": 30.482262295081966,
+        "util_pct": 96.78142076502732,
+        "clock_mhz": 1140,
+        "energy_j": 98.40686889518086
+      },
+      "2122": {
+        "batch_time_s": 2.0101235000183806,
+        "power_w": 54.364504347826085,
+        "util_pct": 92.67826086956522,
+        "clock_mhz": 2096.4521739130437,
+        "energy_j": 109.27936775641663
+      }
+    },
+    "sensitivity": 11.883269460691057,
+    "service_top_s": 2.0101235000183806,
+    "base_rate": 2.35
+  }
+}
